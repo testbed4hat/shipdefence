@@ -24,7 +24,8 @@ __email__ = 'Chace.Ashcraft@jhuapl.edu, Jared.Markowitz@jhuapl.edu, Aurora.Schmi
 __version__ = '0.0.1'
 install_requires = ['numpy>=1.26.4',
                     'gymnasium>=0.29.1',
-                    'pygame>=2.5.2'
+                    'pygame>=2.5.2',
+                    'requests',
                     ]
 
 setuptools.setup(
