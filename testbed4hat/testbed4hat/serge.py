@@ -1,6 +1,6 @@
 from datetime import date, datetime, time, timedelta, UTC
 import json
-
+from cache import Cache
 import requests
 
 
@@ -34,20 +34,31 @@ class SergeGame:
         # initialize the game state
         self.turn_number: int = 0
         self.game_time: time = time(hour=15, minute=0)  # TODO: to read from the game definition
+        self.cache = Cache
 
     def set_up_game(self):
         # TODO: Read the game state from Serge and set up the game
-
-        # put the ships on the map
+        #response = self.get_wargame()
+        #update_game_state = self.cache.set_current_game_state(response)
         self.send_message(MSG_MAPPING_SHIPS)
 
-    def get_wargame(self) -> list[dict]:
-        response = requests.get(self.api_endpoint)
-        return response.json()["data"]
+    def get_wargame(self) -> list[dict] | None:
+        try:
+            response = requests.get(self.api_endpoint, timeout=5)
+            response.raise_for_status()
+            return response.json()["data"]
+        except requests.exceptions.RequestException as e:
+            print(f"Request to {self.api_endpoint} failed: {e}")
+            return None
 
-    def get_wargame_last(self) -> list[dict]:
-        response = requests.get(f"{self.api_endpoint}/last")
-        return response.json()["data"]
+    def get_wargame_last(self) -> list[dict] | None:
+        try:
+            response = requests.get(f"{self.api_endpoint}/last", timeout=5)
+            response.raise_for_status()
+            return response.json()["data"]
+        except requests.exceptions.RequestException as e:
+            print(f"Request to {self.api_endpoint} failed: {e}")
+            return None
 
     def send_message(self, message: dict):
         # remove _rev if present

@@ -1,16 +1,16 @@
 from testbed4hat.testbed4hat.hat_env import HatEnv
 from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from typing import Union, Tuple
-
+from serge import SergeGame
+import requests
 
 class SergeEnvRunner:
     WEAPON_STR_TO_INT = {"Long Range": 0, "Short Range": 1}
 
-    def __init__(self):
+    def __init__(self, game_id: str, server_url: str = "https://serge-inet.herokuapp.com"):
         # todo:
         #  - Define how env should be initialized (do we get a config from Serge? or do we just listen for messages?)
         #  - Save run information to local storage
-
         self.env_config = HatEnvConfig()  # todo:  get config from init or from Serge
         self.env = None
         self.obs = None
@@ -20,6 +20,41 @@ class SergeEnvRunner:
         self.info = None
         self.turn = None
         self.turn_actions = None
+        
+        #serge setup vars
+        self.game_id = game_id
+        self.url = server_url
+        self.serge_game = SergeGame(game_id=game_id, server_url=server_url)
+
+        #serge state variables
+        self.current_game_state: list[dict] | None = None
+        self.wargame_last: list[dict] | None = None
+
+        #bools
+        self.should_get_wargame: bool = True
+        self.should_get_wargame_last: bool = True
+        self.should_send_message: bool = False
+        self.should_send_chat_message: bool = False
+        self.should_send_WA_message: bool = False
+    
+    def reset_function_list(self):
+        self.function_list = list(self.function_map.keys())
+
+    def set_current_game_state(self, data: list[dict] | None = None):
+        if data != None:
+            self.current_game_state = data
+            return True
+        else:
+            #failed to update game state
+            return False
+
+    def set_wargame_last(self, data: list[dict] | None = None):
+        if data != None:
+            self.wargame_last = data
+            return True
+        else:
+            #failed to update game state
+            return False
 
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
@@ -107,6 +142,26 @@ class SergeEnvRunner:
                 # todo: how to send reset information?
                 #   E.g. ship locations?
                 reset = False
+
+            if self.should_get_wargame:
+               data = self.serge_game.get_wargame()
+               self.set_current_game_state(data)
+
+            if self.should_get_wargame_last:
+                data = self.serge_game.get_wargame_last()
+                self.set_wargame_last(data)
+            
+            if self.should_send_message:
+                #self.serge_game.send_message({})
+                pass
+
+            if self.should_send_chat_message:
+                #self.serge_game.send_chat_message("")
+                pass
+
+            if self.should_send_WA_message:
+                #self.serge_game.send_WA_message()
+                pass
 
             msg = self._listen_for_message()
 
