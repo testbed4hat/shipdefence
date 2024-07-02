@@ -1,8 +1,8 @@
 from testbed4hat.testbed4hat.hat_env import HatEnv
 from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from typing import Union, Tuple
-from serge import SergeGame
 import requests
+from serge import MSG_MAPPING_SHIPS, MSG_WA, MSG_CHAT, SergeGame
 
 class SergeEnvRunner:
     WEAPON_STR_TO_INT = {"Long Range": 0, "Short Range": 1}
@@ -108,7 +108,7 @@ class SergeEnvRunner:
         # }
 
         # Tuple is (ship_number: int, weapon_type: int, threat_id: str)
-        ship_number = 0 if wa_message['channel'] == 'Ship 1' else 1  # todo: verify!
+        ship_number = 0 if wa_message['channel'] == self.serge_game_instance.MAPPING_SHIP[1] else 1  # todo: verify!
         weapon_type = self.WEAPON_STR_TO_INT[wa_message['message']["Weapon"]]  # todo: verify!
         threat_id = wa_message['message']["Title"]  # todo: verify!
         return ship_number, weapon_type, threat_id
@@ -117,8 +117,8 @@ class SergeEnvRunner:
         action = self._convert_wa_message_to_action(message)
 
         '''
-        Current mental model of actions is that we will action messages on a rolling basis, so just add it to the
-        list of actions to send to the env, until the turn is over. This may be wrong.
+        We will action messages on a rolling basis, so just add it to the list of actions to send to the env, until 
+        the turn is over.
         '''
         self.turn_actions.append(action)
 
@@ -128,6 +128,7 @@ class SergeEnvRunner:
 
     def _send_step_message(self) -> None:
         # Convert the observation to a Serge message and send it to Serge
+        # Note: Not sure if this message type is defined yet on Serge side!
         return None
 
     def run(self):
