@@ -26,6 +26,8 @@ install_requires = ['numpy>=1.26.4',
                     'gymnasium>=0.29.1',
                     'pygame>=2.5.2',
                     'requests',
+                    'shapely',
+                    'pyproj'
                     ]
 
 setuptools.setup(

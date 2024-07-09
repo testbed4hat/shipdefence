@@ -16,7 +16,7 @@
 import json
 from typing import Union, Any
 
-from testbed4hat.wave_generator import WaveGenerator, DEFAULT_THREAT_0_SPEED, DEFAULT_THREAT_1_SPEED
+from .wave_generator import WaveGenerator, DEFAULT_THREAT_0_SPEED, DEFAULT_THREAT_1_SPEED
 
 
 class HatEnvConfig:
@@ -30,6 +30,7 @@ class HatEnvConfig:
     SHIP_BASE_SIZE_RANGE = (200, 800)
     COLOR_RANGE = (0, 255)
     MAX_TIME_RANGE = (5 * 60, 60 * 60)
+    HARD_SHIP_LOCATION_RANGE = (-1000, 1000)  # in meters
 
     PARAM_DESCRIPTION = {
         "config": "Dictionary with HAT environment configuration parameters as key-value pairs, or string path to a "
@@ -50,6 +51,8 @@ class HatEnvConfig:
         "num_ship_2_weapon_1": "Total number of weapon 1 on ship 2.",
         "min_distance_between_ships": "The minimum distance between the two ship locations.",
         "max_distance_between_ships": "The maximum distance between the two ship locations.",
+        "hard_ship_1_location": "Force ship 1 to be located a this point (instead of random generation)",
+        "hard_ship_2_location": "Force ship 2 to be located a this point (instead of random generation)",
         "wasted_weapon_reward": "The reward returned by the environment for each wasted weapon. A "
                                 "weapon is considered 'wasted' if the threat it targeted was "
                                 "destroyed before the weapon hit it",
@@ -100,6 +103,8 @@ class HatEnvConfig:
         "max_distance_between_ships": (int, float),
         "wasted_weapon_reward": float,
         "max_episode_time_in_seconds": int,
+        "hard_ship_1_location": (None, tuple, list),
+        "hard_ship_2_location": (None, tuple, list),
         "verbose": bool,
         "render_env": bool,
         "zoom": float,
@@ -144,6 +149,8 @@ class HatEnvConfig:
         self.num_ship_2_weapon_1 = 10
         self.min_distance_between_ships = 1000  # in meters
         self.max_distance_between_ships = 5000  # in meters
+        self.hard_ship_1_location = None
+        self.hard_ship_2_location = None
         self.wasted_weapon_reward = -0.01
         self.max_episode_time_in_seconds = 25 * 60
         self.verbose = True
@@ -225,7 +232,9 @@ class HatEnvConfig:
                               "threat_1_base_size": self.THREAT_BASE_SIZE_RANGE,
                               "weapon_0_base_size": self.WEAPON_BASE_SIZE_RANGE,
                               "weapon_1_base_size": self.WEAPON_BASE_SIZE_RANGE,
-                              "max_episode_time_in_seconds": self.MAX_TIME_RANGE
+                              "max_episode_time_in_seconds": self.MAX_TIME_RANGE,
+                              "hard_ship_1_location": self.HARD_SHIP_LOCATION_RANGE,
+                              "hard_ship_2_location": self.HARD_SHIP_LOCATION_RANGE,
                               }
         print("The configuration object for the HatEnv environment. The configuration parameters are as follows:")
         print()
@@ -265,6 +274,14 @@ class HatEnvConfig:
         assert isinstance(self.num_ship_2_weapon_1, int) and 0 <= self.num_ship_2_weapon_1
         assert isinstance(self.min_distance_between_ships, (int, float)) and 0 < self.min_distance_between_ships
         assert isinstance(self.max_distance_between_ships, (int, float)) and 0 < self.max_distance_between_ships
+        assert self.hard_ship_1_location is None or isinstance(self.hard_ship_1_location, (tuple, list))
+        if self.hard_ship_1_location is not None:
+            for coord in self.hard_ship_1_location:
+                assert self.HARD_SHIP_LOCATION_RANGE[0] <= coord <= self.HARD_SHIP_LOCATION_RANGE[1]
+        assert self.hard_ship_2_location is None or isinstance(self.hard_ship_2_location, (tuple, list))
+        if self.hard_ship_2_location is not None:
+            for coord in self.hard_ship_2_location:
+                assert self.HARD_SHIP_LOCATION_RANGE[0] <= coord <= self.HARD_SHIP_LOCATION_RANGE[1]
         assert isinstance(self.wasted_weapon_reward, float)
         assert self.WASTED_REWARD_RANGE[0] <= self.wasted_weapon_reward <= self.WASTED_REWARD_RANGE[1]
         assert isinstance(self.max_episode_time_in_seconds, int)

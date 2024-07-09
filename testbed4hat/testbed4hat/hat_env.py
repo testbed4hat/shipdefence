@@ -25,7 +25,7 @@ from .messages import WeaponLaunchInfo, WeaponEndMessage, ShipDestroyedMessage, 
 from .pk_table import get_pk
 from .ship import Ship
 from .threat import Threat
-from .utils import distance
+from .utils import distance, compute_pk_ring_radii
 from .wave_generator import WaveGenerator
 from .weapon import Weapon
 from .hat_env_config import HatEnvConfig
@@ -48,6 +48,8 @@ class HatEnv(gym.Env):
         self.num_ship_2_weapon_1 = self.config.num_ship_2_weapon_1
         self.min_distance_between_ships = self.config.min_distance_between_ships
         self.max_distance_between_ships = self.config.max_distance_between_ships
+        self.hard_ship_1_location = self.config.hard_ship_1_location
+        self.hard_ship_2_location = self.config.hard_ship_2_location
         self.wasted_weapon_reward = self.config.wasted_weapon_reward
         self.max_episode_time_in_seconds = self.config.max_episode_time_in_seconds
         self.verbose = self.config.verbose
@@ -108,7 +110,7 @@ class HatEnv(gym.Env):
         self.ship_1_color = self.config.ship_1_color
         self.ship_2_color = self.config.ship_2_color
 
-        self.low_pk_ring_radius, self.short_pk_ring_radius, self.long_pk_ring_radius = self._compute_pk_ring_radii()
+        self.low_pk_ring_radius, self.short_pk_ring_radius, self.long_pk_ring_radius = compute_pk_ring_radii()
         if self.verbose:
             print("Ring info:")
             print(f"\tLow PK Ring Radius: {self.low_pk_ring_radius} meters")
@@ -357,7 +359,7 @@ class HatEnv(gym.Env):
             "location": self.ship_2.location,
             "threats": [self._threat_observation(1, threat) for threat_id, threat in self.threats.items()],
             "weapons": [self._weapon_observation(1, weapon) for weapon in self.weapons],
-            "inventory": self.ship_1.weapon_inventory()
+            "inventory": self.ship_2.weapon_inventory()
         }
 
         # Aggregate action (weapon) information
@@ -383,18 +385,32 @@ class HatEnv(gym.Env):
         self.time_step = 0
         self.time_seconds = 0
 
-        ship_1_angle = np.random.uniform(0, 2 * np.pi)
-        ship_1_radius = np.random.uniform(0, self.max_distance_between_ships)
-        ship_1_loc = (ship_1_radius * np.cos(ship_1_angle), ship_1_radius * np.sin(ship_1_angle))
+        if self.hard_ship_1_location is None:
+            ship_1_angle = np.random.uniform(0, 2 * np.pi)
+            ship_1_radius = np.random.uniform(0, self.max_distance_between_ships)
+            ship_1_loc = (ship_1_radius * np.cos(ship_1_angle), ship_1_radius * np.sin(ship_1_angle))
+        else:
+            ship_1_loc = self.hard_ship_1_location
 
-        ship_2_angle = np.random.uniform(0, 2 * np.pi)
-        ship_2_radius = np.random.uniform(0, self.max_distance_between_ships)
-        ship_2_loc = (ship_2_radius * np.cos(ship_2_angle), ship_2_radius * np.sin(ship_2_angle))
-        while not (self.min_distance_between_ships <= distance(ship_1_loc, ship_2_loc)
-                   <= self.max_distance_between_ships):
+        if self.hard_ship_2_location is None:
             ship_2_angle = np.random.uniform(0, 2 * np.pi)
             ship_2_radius = np.random.uniform(0, self.max_distance_between_ships)
             ship_2_loc = (ship_2_radius * np.cos(ship_2_angle), ship_2_radius * np.sin(ship_2_angle))
+        else:
+            ship_2_loc = self.hard_ship_2_location
+
+        # update the ships' locations to get a minimum distance, as long as both locations are not prescribed
+        if self.hard_ship_1_location is None or self.hard_ship_2_location is None:
+            while not (self.min_distance_between_ships <= distance(ship_1_loc, ship_2_loc)
+                       <= self.max_distance_between_ships):
+                if self.hard_ship_2_location is not None:
+                    ship_1_angle = np.random.uniform(0, 2 * np.pi)
+                    ship_1_radius = np.random.uniform(0, self.max_distance_between_ships)
+                    ship_1_loc = (ship_1_radius * np.cos(ship_1_angle), ship_1_radius * np.sin(ship_1_angle))
+                else:
+                    ship_2_angle = np.random.uniform(0, 2 * np.pi)
+                    ship_2_radius = np.random.uniform(0, self.max_distance_between_ships)
+                    ship_2_loc = (ship_2_radius * np.cos(ship_2_angle), ship_2_radius * np.sin(ship_2_angle))
 
         ship_1_orientation = np.rad2deg(np.random.uniform(0, 2 * np.pi))
         ship_2_orientation = np.rad2deg(np.random.uniform(0, 2 * np.pi))
@@ -505,31 +521,6 @@ class HatEnv(gym.Env):
         reward, terminated, truncated = self._reward_terminated_truncated(self.step_messages)
         info = {}
         return self._make_observation(user_info_launches, user_info_failures), reward, terminated, truncated, info
-
-    @staticmethod
-    def _compute_pk_ring_radii() -> Tuple[float, float, float]:
-        r = [item for item in range(0, 40000, 100)]
-        weapon_0_threat_0_pk = [get_pk(d, 0, 0) for d in range(0, 40000, 100)]
-        weapon_0_threat_1_pk = [get_pk(d, 0, 1) for d in range(0, 40000, 100)]
-        weapon_1_threat_0_pk = [get_pk(d, 1, 0) for d in range(0, 40000, 100)]
-        weapon_1_threat_1_pk = [get_pk(d, 1, 1) for d in range(0, 40000, 100)]
-
-        r_list = []
-        for pk_list in [weapon_0_threat_0_pk, weapon_0_threat_1_pk, weapon_1_threat_0_pk, weapon_1_threat_1_pk]:
-            a = np.array(pk_list)
-            low = np.where(a <= 0.5)[0]
-            i = np.where(np.diff(low) > 1)[0][0]
-            low_idx = low[i]
-            high_idx = low[i + 1]
-            low_val = r[low_idx]
-            high_val = r[high_idx]
-            r_list.append((low_val, high_val))
-
-        low_pk_ring_radius = np.mean([r[0] for r in r_list])
-        short_weapon_pk_radius = np.mean([r_list[2][1], r_list[3][1]])  # weapon 1
-        long_weapon_pk_radius = np.mean([r_list[0][1], r_list[1][1]])  # weapon 0
-
-        return low_pk_ring_radius, short_weapon_pk_radius, long_weapon_pk_radius
 
     def _draw_rotated_and_rounded_rect(self, screen, color, x, y, ship_length, ship_width, angle) -> None:
         """Draw a ship-looking shape"""

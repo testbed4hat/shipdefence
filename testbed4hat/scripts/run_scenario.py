@@ -96,9 +96,9 @@ def run_scenario(path_to_config: str = None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("Run HAT scenario using a config file")
-    parser.add_argument('config', type=str, help='Path to config file')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser("Run HAT scenario using a config file")
+    # parser.add_argument('config', type=str, help='Path to config file')
+    # args = parser.parse_args()
 
     # run_scenario(args.config)
     run_scenario()

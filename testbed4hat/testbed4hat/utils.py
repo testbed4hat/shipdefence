@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from typing import Union, Tuple
+
+import numpy as np
+
+from .pk_table import get_pk
 
 
 def distance(p1: Tuple[float, float], p2: Tuple[float, float]) -> np.float64:
@@ -47,3 +50,31 @@ def get_weapon_launch_info(threat_location: np.ndarray, ship_location: np.ndarra
 
     return {"weapon_velocity": weapon_vel, "intercept_point": intercept_point,
             "time_to_intercept": time_to_intercept}
+
+
+def compute_pk_ring_radii() -> Tuple[float, float, float]:
+    r = [item for item in range(0, 40000, 100)]
+    weapon_0_threat_0_pk = [get_pk(d, 0, 0) for d in range(0, 40000, 100)]
+    weapon_0_threat_1_pk = [get_pk(d, 0, 1) for d in range(0, 40000, 100)]
+    weapon_1_threat_0_pk = [get_pk(d, 1, 0) for d in range(0, 40000, 100)]
+    weapon_1_threat_1_pk = [get_pk(d, 1, 1) for d in range(0, 40000, 100)]
+
+    r_list = []
+    for pk_list in [weapon_0_threat_0_pk, weapon_0_threat_1_pk, weapon_1_threat_0_pk, weapon_1_threat_1_pk]:
+        a = np.array(pk_list)
+        low = np.where(a <= 0.5)[0]
+        i = np.where(np.diff(low) > 1)[0][0]
+        low_idx = low[i]
+        high_idx = low[i + 1]
+        low_val = r[low_idx]
+        high_val = r[high_idx]
+        r_list.append((low_val, high_val))
+
+    low_pk_ring_radius = float(np.mean([r[0] for r in r_list]))
+    short_weapon_pk_radius = float(np.mean([r_list[2][1], r_list[3][1]]))  # weapon 1
+    long_weapon_pk_radius = float(np.mean([r_list[0][1], r_list[1][1]]))  # weapon 0
+
+    return low_pk_ring_radius, short_weapon_pk_radius, long_weapon_pk_radius
+
+
+
