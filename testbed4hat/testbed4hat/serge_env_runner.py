@@ -2,37 +2,32 @@ from testbed4hat.testbed4hat.hat_env import HatEnv
 from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from testbed4hat.testbed4hat.utils import compute_pk_ring_radii
 from typing import Union, Tuple
-import requests
 from serge import MSG_MAPPING_SHIPS, MSG_WA, MSG_CHAT, SergeGame
 import pyproj
 from pyproj import CRS, Transformer
 from shapely.geometry import Point
 from shapely.ops import transform
 from datetime import datetime
+from copy import deepcopy
 
 THREAT_TEMPLATE = {
     "geometry": {"coordinates": [43.21484211402448, 12.819648833091783], "type": "Point"},
     "properties": {
-        "_type": "Threat",
+        "_type": "MilSymRenderer",
         "category": "Military",
-        "force": "UNK",
+        "force": "f-taskforce",
         "health": 100,
         "id": "threat_id",
-        "label": "UNK",
-        "phase": "UNK",
-        "sidc": "UNK",
-        "size": "UNK",
+        "label": "Threat",
+        "phase": "planning",
+        "sidc": "30033020001202031500",
+        "size": "S",
         "turn": 0,
-    },
-    "Threat": {
-        "Detected type": "ASM",
+        "Detected type": "UNK",
         "Expected ETA": "15:09",
-        "ID": "B01",
         "Ship Targeted": "Ship A",
-        "Velocity": 850,
+        "Velocity": [850, 900],
     },
-    "Title": "B01",
-    "Weapon": "Long Range",
     "type": "Feature",
 
 }
@@ -40,25 +35,19 @@ THREAT_TEMPLATE = {
 WEAPON_TEMPLATE = {
     "geometry": {"coordinates": [43.21484211402448, 12.819648833091783], "type": "Point"},
     "properties": {
-        "_type": "Weapon",
+        "_type": "MilSymRenderer",
         "category": "Military",
-        "force": "UNK",
+        "force": "f-taskforce",
         "health": 100,
         "id": "weapon_id",
-        "label": "UNK",
-        "phase": "UNK",
-        "sidc": "UNK",
-        "size": "UNK",
+        "label": "Alpha",
+        "phase": "planning",
+        "sidc": "30033020001202031500",
+        "size": "S",
         "turn": 0,
-    },
-    "Weapon": {
+        "threat_targeted": "threat_id",
         "Expected ETA": "15:09",
-        "ID": "B01",
-        "Ship Targeted": "Ship A",
-        "Velocity": 850,
     },
-    "Title": "B01",
-    "Threat": "Long Range",
     "type": "Feature",
 }
 
@@ -78,6 +67,11 @@ def get_pd_polygons(lat, lon):
     low_pk_ring = geodesic_point_buffer(lat, lon, low_pk_ring_radius)  # in meters
     short_weapon_pk_ring = geodesic_point_buffer(lat, lon, low_pk_ring_radius)  # in meters
     long_weapon_pk_ring = geodesic_point_buffer(lat, lon, low_pk_ring_radius)  # in meters
+
+    # convert to serge format
+    low_pk_ring = [[list(coord) for coord in low_pk_ring]]
+    short_weapon_pk_ring = [[list(coord) for coord in short_weapon_pk_ring]]
+    long_weapon_pk_ring = [[list(coord) for coord in long_weapon_pk_ring]]
     return low_pk_ring, short_weapon_pk_ring, long_weapon_pk_ring
 
 
@@ -86,7 +80,9 @@ class SergeEnvRunner:
 
     def __init__(self, game_id: str, server_url: str = "https://serge-inet.herokuapp.com"):
         # todo: log game to local storage?
-        lat_long_zero = [43.21484211402448, 12.819648833091783]  # The lat-long coordinates of (0, 0) in the sim
+
+        # long-lat coords in Serge: [43.21484211402448, 12.819648833091783]
+        lat_long_zero = [12.819648833091783, 43.21484211402448]  # The lat-long coordinates of (0, 0) in the sim
 
         # Note: not confident I know how this works
         self.coordinate_projector = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
@@ -103,6 +99,8 @@ class SergeEnvRunner:
 
         self.ship_1_lat_long = self.coordinate_projector(*ship_1_loc_adjusted, inverse=True)
         self.ship_2_lat_long = self.coordinate_projector(*ship_2_loc_adjusted, inverse=True)
+        self.ship_1_long_lat = [self.ship_1_lat_long[1], self.ship_1_lat_long[0]]
+        self.ship_2_long_lat = [self.ship_2_lat_long[1], self.ship_2_lat_long[0]]
 
         config = HatEnvConfig()
         # set hard-coded game parameters
@@ -122,13 +120,13 @@ class SergeEnvRunner:
         config.set_parameter("num_ship_1_weapon_1", 10)
         config.set_parameter("num_ship_2_weapon_0", 10)
         config.set_parameter("num_ship_2_weapon_1", 10)
+        config.set_parameter("render_env", False)
 
         # Set max time to 12 minutes
         config.set_parameter("max_episode_time_in_seconds", 12 * 60)
 
         config.set_parameter("seed", 1337)
 
-        # send to Serge?
         out = get_pd_polygons(*lat_long_zero)
         self.low_pk_range_polygon, self.short_weapon_range_polygon, self.long_weapon_range_polygon = out
 
@@ -141,6 +139,7 @@ class SergeEnvRunner:
         self.info = None
         self.turn = None
         self.turn_actions = None
+        self.ship_features = None
 
         # serge setup vars
         self.game_id = game_id
@@ -158,34 +157,12 @@ class SergeEnvRunner:
         self.should_send_chat_message: bool = False
         self.should_send_WA_message: bool = False
 
-    def reset_function_list(self):
-        self.function_list = list(self.function_map.keys())
-
-    def set_current_game_state(self, data: list[dict] | None = None):
-        if data is not None:
-            self.current_game_state = data
-            return True
-        else:
-            # failed to update game state
-            return False
-
-    def set_wargame_last(self, data: list[dict] | None = None):
-        if data is not None:
-            self.wargame_last = data
-            return True
-        else:
-            # failed to update game state
-            return False
-
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
         self.terminated = False
         self.truncated = False
         self.turn = 0
-
-    def _listen_for_message(self) -> Union[dict, None]:
-        # todo: listen for messages. If message found, parse and return
-        return None
+        self.turn_actions = []
 
     def _convert_wa_message_to_action(self, wa_message) -> Tuple[int, int, str]:
         # # WA message
@@ -198,17 +175,15 @@ class SergeEnvRunner:
     def _process_action_msg(self, message) -> None:
         action = self._convert_wa_message_to_action(message)
 
-        '''
-        We will action messages on a rolling basis, so just add it to the list of actions to send to the env, until 
-        the turn is over.
-        '''
+        # We will action messages on a rolling basis, so just add it to the list of actions to send to the env, until
+        #   the turn is over.
         self.turn_actions.append(action)
 
     def _step_environment(self) -> None:
         self.obs, self.reward, self.terminated, self.truncated, self.info = self.env.step(self.turn_actions)
         self.turn += 1
 
-    def sim_xy_to_lat_long(self, x, y):
+    def _sim_xy_to_lat_long(self, x, y):
         # convert to map xy coordinates
         x_adjusted = x + self.cartesian_zero[0]
         y_adjusted = y + self.cartesian_zero[1]
@@ -218,42 +193,39 @@ class SergeEnvRunner:
         return lat, long
 
     def _make_threat_dict(self, threat: dict) -> dict:
-        threat_dict = THREAT_TEMPLATE.copy()
+        threat_dict = deepcopy(THREAT_TEMPLATE)
         threat_x, threat_y = threat['location']
 
         # convert to Lat-Long
-        threat_lat, threat_long = self.sim_xy_to_lat_long(threat_x, threat_y)
-        threat_dict['geometry']['coordinates'] = [threat_lat, threat_long]
+        threat_lat, threat_long = self._sim_xy_to_lat_long(threat_x, threat_y)
+        threat_dict['geometry']['coordinates'] = [threat_long, threat_lat]  # Serge wants long-lat
 
-        threat_dict['id'] = threat['threat_id']
-        threat_dict['turn'] = self.turn
-        threat_dict['Threat']["Expected ETA"] = threat['estimated_time_of_arrival']
-        threat_dict['Threat']["ID"] = threat['threat_id']
-        threat_dict['Threat']["Ship Targeted"] = threat['target_ship']
-        threat_dict['Threat']["Velocity"] = threat['velocity']
-        threat_dict['Title'] = threat['threat_id']
-        threat_dict['Weapon'] = "Long Range" if threat['threat_id'] == 0 else "Short Range"
-        threat_dict['Long Range PK'] = threat['weapon_0_kill_probability']
-        threat_dict['Short Range PK'] = threat['weapon_1_kill_probability']
-        threat_dict['Weapons Assigned'] = threat['weapons_assigned']
-        threat_dict['Weapons Assigned PK'] = threat['weapons_assigned_p_kill']
+        threat_dict['properties']['id'] = threat['threat_id']
+        threat_dict['properties']['label'] = threat['threat_id']
+        threat_dict['properties']['turn'] = self.turn
+        threat_dict['properties']["Expected ETA"] = float(threat['estimated_time_of_arrival'])
+        target_ship = int((threat['target_ship']))
+        threat_dict['properties']["Ship Targeted"] = "Alpha" if target_ship == 1 else "Bravo"
+
+        threat_dict['properties']['Long Range PK'] = threat['weapon_0_kill_probability']
+        threat_dict['properties']['Short Range PK'] = threat['weapon_1_kill_probability']
+        threat_dict['properties']['Weapons Assigned'] = threat['weapons_assigned']
+        threat_dict['properties']['Weapons Assigned PK'] = threat['weapons_assigned_p_kill']
         # want weapon assigned type?
         return threat_dict
 
     def _make_weapon_dict(self, weapon: dict) -> dict:
-        weapon_dict = WEAPON_TEMPLATE.copy()
+        weapon_dict = deepcopy(WEAPON_TEMPLATE)
         weapon_x, weapon_y = weapon['location']
 
         # convert to Lat-Long
-        weapon_lat, weapon_long = self.sim_xy_to_lat_long(weapon_x, weapon_y)
+        weapon_lat, weapon_long = self._sim_xy_to_lat_long(weapon_x, weapon_y)
         weapon_dict['geometry']['coordinates'] = [weapon_lat, weapon_long]
-        weapon_dict['id'] = weapon['weapon_id']
-        weapon_dict['turn'] = self.turn
-        weapon_dict['Weapon']["Expected ETA"] = weapon['time_left']
-        weapon_dict['Weapon']["ID"] = weapon['weapon_id']
-        weapon_dict['Weapon']["Threat Targeted"] = weapon['target_id']
-        weapon_dict['Title'] = weapon['weapon_id']
-        weapon_dict['PK'] = weapon['probability_of_kill']
+        weapon_dict['properties']['id'] = weapon['weapon_id']
+        weapon_dict['properties']['turn'] = self.turn
+        weapon_dict['properties']["Expected ETA"] = weapon['time_left']
+        weapon_dict['properties']["Threat Targeted"] = weapon['target_id']
+        weapon_dict['properties']['PK'] = weapon['probability_of_kill']
         return weapon_dict
 
     def _send_step_message(self) -> None:
@@ -291,8 +263,12 @@ class SergeEnvRunner:
                 weapon_dict = self._make_weapon_dict(weapon)
                 weapons.append(weapon_dict)
 
-        step_message = MSG_MAPPING_SHIPS.copy()
-        step_message['FeatureCollection']['features'] = threats + weapons
+        step_message = deepcopy(MSG_MAPPING_SHIPS)
+
+        step_message["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
+        step_message["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
+
+        step_message['featureCollection']['features'] = self.ship_features + threats + weapons
         step_message['details']['turn_number'] = self.turn
         step_message['details']['timestamp'] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
 
@@ -304,6 +280,70 @@ class SergeEnvRunner:
 
         self.serge_game.send_message(step_message)
 
+    def _send_reset_message(self) -> None:
+        # send start game message with updated information
+        start_msg = deepcopy(MSG_MAPPING_SHIPS)
+        start_msg["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
+        start_msg["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
+
+        # make range polygon features
+        range_dict = start_msg["featureCollection"]["features"][2]
+        low_range_dict = deepcopy(range_dict)
+        low_range_dict["properties"]["label"] = "Low Range"
+        low_range_dict["properties"]["id"] = "feature-range-low"
+        low_range_dict["properties"]["color"] = "#777"
+        low_range_dict["geometry"]["coordinates"] = self.low_pk_range_polygon
+        short_range_dict = deepcopy(range_dict)
+        short_range_dict["properties"]["label"] = "Short Range"
+        short_range_dict["properties"]["id"] = "feature-range-short"
+        short_range_dict["properties"]["color"] = "#666"
+        short_range_dict["geometry"]["coordinates"] = self.short_weapon_range_polygon
+        long_range_dict = deepcopy(range_dict)
+        long_range_dict["properties"]["label"] = "Long Range"
+        long_range_dict["properties"]["id"] = "feature-range-long"
+        long_range_dict["properties"]["color"] = "#555"
+        long_range_dict["geometry"]["coordinates"] = self.long_weapon_range_polygon
+
+        self.ship_features = [
+            start_msg["featureCollection"]["features"][0],
+            start_msg["featureCollection"]["features"][1],
+            low_range_dict,
+            short_range_dict,
+            long_range_dict
+        ]
+
+        start_msg["featureCollection"]['features'] = self.ship_features
+
+        self.serge_game.send_message(start_msg)
+
+    def _listen_for_message(self) -> Union[dict, None]:
+        if self.should_get_wargame:
+            # todo: Do we need this information?
+            response = self.serge_game.get_wargame()
+            print(f"Get Wargame call: {len(response)}")
+
+            # todo: Turn on error catching when no longer experimenting
+            # for d in response:
+            #     if d["gameTurn"] != self.turn == 0:
+            #         raise RuntimeError("Wargame not in first step! Need to restart game?")
+
+            self.should_get_wargame = False
+        elif self.should_get_wargame_last:
+            response = self.serge_game.get_wargame_last()
+            # print(f"Get Wargame_Last call: {response}")
+
+            # check if any items in the response have incremented the turn
+            # todo: Determine correct way of knowing when turn has be incremented
+            for d in response:
+                if d["gameTurn"] != self.turn:
+                    self._step_environment()
+                    self._send_step_message()
+                    print("Sent Step Message")
+                    break
+        # todo: check for WA messages and add to action queue
+        # todo: additional message types?
+        return None
+
     def run(self):
         self.env = HatEnv(self.env_config)
 
@@ -313,85 +353,17 @@ class SergeEnvRunner:
         while running:
             if reset:
                 self._reset_env()
+                self._send_reset_message()
                 reset = False
 
-                # send start game message with updated information
-                start_msg = MSG_MAPPING_SHIPS.copy()
-                start_msg["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_lat_long
-                start_msg["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_lat_long
-
-                # make range polygon features
-                range_dict = start_msg["featureCollection"]["features"][2]
-                low_range_dict = range_dict.copy()
-                low_range_dict["label"] = "Low Range"
-                low_range_dict["id"] = "feature-range-low"
-                low_range_dict["color"] = "#777"
-                low_range_dict["geometry"]["coordinates"] = self.low_pk_range_polygon
-                short_range_dict = range_dict.copy()
-                short_range_dict["label"] = "Short Range"
-                short_range_dict["id"] = "feature-range-short"
-                short_range_dict["color"] = "#666"
-                short_range_dict["geometry"]["coordinates"] = self.short_weapon_range_polygon
-                long_range_dict = range_dict.copy()
-                long_range_dict["label"] = "Long Range"
-                long_range_dict["id"] = "feature-range-long"
-                long_range_dict["color"] = "#555"
-                long_range_dict["geometry"]["coordinates"] = self.long_weapon_range_polygon
-
-                start_msg["featureCollection"] = [
-                    start_msg["featureCollection"]["features"][0],
-                    start_msg["featureCollection"]["features"][1],
-                    low_range_dict,
-                    short_range_dict,
-                    long_range_dict
-                ]
-
-                self.serge_game.send_message(start_msg)
-
-            # if self.should_get_wargame:
-            #     data = self.serge_game.get_wargame()
-            #     self.set_current_game_state(data)
-            #
-            # if self.should_get_wargame_last:
-            #     data = self.serge_game.get_wargame_last()
-            #     self.set_wargame_last(data)
-            #
-            # if self.should_send_message:
-            #     # self.serge_game.send_message({})
-            #     pass
-            #
-            # if self.should_send_chat_message:
-            #     # self.serge_game.send_chat_message("")
-            #     pass
-            #
-            # if self.should_send_WA_message:
-            #     # self.serge_game.send_WA_message()
-            #     pass
-
-            msg = self._listen_for_message()
-
-            if msg:
-                if msg["templateId"] == "WA Message":  # Action message case (assign weapons to threats)
-                    self._process_action_msg(msg)
-
-                elif msg["templateId"] == "InfoMessage":  # Not a defined message yet, but a case for end turn
-                    self._step_environment()
-                    self._send_step_message()
-
-                # not doing this?
-                # elif msg["templateId"] == "Reset Message":  # Not a defined message yet, but a case for sim reset
-                #     reset = True
-
-                elif msg["templateId"] == "Terminate Message":  # Not a defined message yet, but a case for end game
-                    running = False
-
-                # todo: additional message types?
+            self._listen_for_message()
 
             if self.terminated or self. truncated:
                 running = False
 
 
 if __name__ == '__main__':
-    game_id = "Testbed4HAT-template-lxcd9mgw"
+    # game_id = "wargame-lxcd9mgw"
+    game_id = "wargame-lyqd59s8"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
