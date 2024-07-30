@@ -185,6 +185,7 @@ class SergeEnvRunner:
         self.turn_actions = None
         self.ship_features = None
         self.heuristic_agent = None
+        self.turns_processed = None
 
         # serge setup vars
         self.game_id = game_id
@@ -204,6 +205,7 @@ class SergeEnvRunner:
         self.truncated = False
         self.turn = 0
         self.turn_actions = []
+        self.turns_processed = set()
         self.heuristic_agent = HeuristicAgent(
             self.env_config.weapon_0_speed, self.env_config.weapon_1_speed,
             threshold=0.5,  # arbitrary choice, update as needed for desired performance
@@ -428,6 +430,7 @@ class SergeEnvRunner:
             # Process one message at a time
             if message_type == "CustomMessage":
                 # Process custom messages (Chat, WA)
+                print("custom message received")
                 self.process_custom_message(message)
             elif message_type == "InfoMessage":
                 # get the ship channel Unique IDs from Serge, if we don't already have them (for WA messages)
@@ -444,9 +447,14 @@ class SergeEnvRunner:
                 if message["gameTurn"] != self.turn and message["gameTurn"] - self.turn > 1:
                     raise ValueError("Serge/Sim out of sync! Serge game turn is ahead of sim turn by more than one!")
 
-                if message["gameTurn"] == self.turn and message["phase"] == "adjudication":
+                if (message["gameTurn"] == self.turn
+                        and self.turn not in self.turns_processed  # only process turn once
+                        and message["phase"] == "adjudication"):
+                    print("adjudication")
                     self.process_adjudication_phase()
+                    self.turns_processed.add(self.turn)
                 elif message["gameTurn"] > self.turn and message["phase"] == "planning":
+                    print("planning")
                     self._step_environment()
             else:  # skipping all other message types
                 warn(f"Unexpected message type received! Type: {message_type}")
@@ -495,6 +503,6 @@ class SergeEnvRunner:
 
 if __name__ == '__main__':
     # game_id = "wargame-lxcd9mgw"
-    game_id = "wargame-lz8o85i2"
+    game_id = "wargame-lz8rd09l"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
