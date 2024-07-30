@@ -144,11 +144,10 @@ class SergeEnvRunner:
         # serge setup vars
         self.game_id = game_id
         self.url = server_url
-        self.serge_game = SergeGame(game_id=game_id, server_url=server_url)
+        self.serge_game = SergeGame(game_id=game_id, server_url=server_url)  # interface to Serge
 
         # serge state variables
-        self.current_game_state: list[dict] | None = None
-        self.wargame_last: list[dict] | None = None
+        self.messages_queue: list[dict] = []  # the list of Serge messages waiting to be processed
 
         # bools
         self.should_get_wargame: bool = True
@@ -280,8 +279,8 @@ class SergeEnvRunner:
 
         self.serge_game.send_message(step_message)
 
-    def _send_reset_message(self) -> None:
-        # send start game message with updated information
+    def _send_new_game_messages(self) -> None:
+        # constructing the initial mapping message (from the template)
         start_msg = deepcopy(MSG_MAPPING_SHIPS)
         start_msg["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
         start_msg["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
@@ -305,44 +304,71 @@ class SergeEnvRunner:
         long_range_dict["geometry"]["coordinates"] = self.long_weapon_range_polygon
 
         self.ship_features = [
-            start_msg["featureCollection"]["features"][0],
-            start_msg["featureCollection"]["features"][1],
-            low_range_dict,
-            short_range_dict,
-            long_range_dict
+            start_msg["featureCollection"]["features"][0],  # Ship 1
+            start_msg["featureCollection"]["features"][1],  # Ship 2
+            low_range_dict,  # Range circle: Low
+            short_range_dict,  # Range circle: Short
+            long_range_dict,  # Range circle: Long
         ]
 
         start_msg["featureCollection"]['features'] = self.ship_features
 
         self.serge_game.send_message(start_msg)
 
-    def _listen_for_message(self) -> Union[dict, None]:
-        if self.should_get_wargame:
-            # todo: Do we need this information?
-            response = self.serge_game.get_wargame()
-            print(f"Get Wargame call: {len(response)}")
+    def _poll_serge_messages(self) -> None:
+        """
+        Polls the Serge server for messages and processes them
+        """
 
-            # todo: Turn on error catching when no longer experimenting
-            # for d in response:
-            #     if d["gameTurn"] != self.turn == 0:
-            #         raise RuntimeError("Wargame not in first step! Need to restart game?")
+        # Read all new messages from the server
+        last_message_id = self.messages_queue[-1]["id"] if self.messages_queue else None
+        # new_messages = self.serge_game.get_messages(last_message_id=last_message_id)
+        # self.messages_queue.extend(new_messages)
 
-            self.should_get_wargame = False
-        elif self.should_get_wargame_last:
-            response = self.serge_game.get_wargame_last()
-            # print(f"Get Wargame_Last call: {response}")
+        # Process all messages in the queue
+        while self.messages_queue:
+            message = self.messages_queue.pop(0)
+            message_type = message["messageType"]
 
-            # check if any items in the response have incremented the turn
-            # todo: Determine correct way of knowing when turn has be incremented
-            for d in response:
-                if d["gameTurn"] != self.turn:
-                    self._step_environment()
-                    self._send_step_message()
-                    print("Sent Step Message")
-                    break
-        # todo: check for WA messages and add to action queue
-        # todo: additional message types?
-        return None
+            # TODO: Process one message at a time
+            if message_type == "CustomMessage":
+                # Process custom messages (Chat, WA)
+                self.process_custom_message(message)
+            elif message_type == "InfoMessage":
+                # TODO: What if the game has moved several turns ahead? This is unlikely to happen, but we should have
+                #  a guard against this.
+                if message["gameTurn"] == self.turn and message["phase"] == "adjudication":
+                    self.process_adjudication_phase()
+                elif message["gameTurn"] > self.turn and message["phase"] == "planning":
+                    self.proceed_to_next_turn()
+            else:  # skipping all other message types
+                # TODO: print out a warning to avoid missing important message types in the future
+                pass
+
+    def process_custom_message(self, message: dict) -> None:
+        """
+        Processes a custom message from Serge
+        """
+        msg_template = message["templateId"]
+        if msg_template == "WA Message":
+            # TODO: Store the message in the queue to process when the adjudication phase starts
+            pass
+
+    def process_adjudication_phase(self) -> None:
+        """
+        Processes all the actions that were sent during the turn
+        """
+        # TODO: 1. Generate the array of actions from WA messages
+        # TODO: 2. Execute the queued actions and get the new observations
+        # TODO: 3. Update the state of the world (create a new mapping message with the new state and send it to Serge)
+        # TODO: 4. Send chat updates (TBD)
+        # TODO: 5. Generate and send new WA messages
+
+    def proceed_to_next_turn(self) -> None:
+        """
+        Proceeds to the next turn
+        """
+        pass
 
     def run(self):
         self.env = HatEnv(self.env_config)
@@ -352,13 +378,16 @@ class SergeEnvRunner:
 
         while running:
             if reset:
+                # initiliaze a new game
                 self._reset_env()
-                self._send_reset_message()
+                self._send_new_game_messages()  # add the objects (ships and range circles) to the map
                 reset = False
 
-            self._listen_for_message()
+            # TODO: Wait for a few seconds before checking for new messages
 
-            if self.terminated or self. truncated:
+            self._poll_serge_messages()
+
+            if self.terminated or self.truncated:
                 running = False
 
 
