@@ -279,14 +279,14 @@ class SergeEnvRunner:
 
         self.serge_game.send_message(step_message)
 
-    def _send_new_game_messages(self) -> None:
-        # constructing the initial mapping message (from the template)
-        start_msg = deepcopy(MSG_MAPPING_SHIPS)
-        start_msg["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
-        start_msg["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
+    def _construct_mapping_message(self) -> dict:
+        # constructing the mapping message from the template
+        message = deepcopy(MSG_MAPPING_SHIPS)
+        message["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
+        message["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
 
         # make range polygon features
-        range_dict = start_msg["featureCollection"]["features"][2]
+        range_dict = message["featureCollection"]["features"][2]
         low_range_dict = deepcopy(range_dict)
         low_range_dict["properties"]["label"] = "Low Range"
         low_range_dict["properties"]["id"] = "feature-range-low"
@@ -303,17 +303,24 @@ class SergeEnvRunner:
         long_range_dict["properties"]["color"] = "#555"
         long_range_dict["geometry"]["coordinates"] = self.long_weapon_range_polygon
 
-        self.ship_features = [
-            start_msg["featureCollection"]["features"][0],  # Ship 1
-            start_msg["featureCollection"]["features"][1],  # Ship 2
+        # TODO: 3.c. Update the ships' statuses (any damage, disabled, sunk?)
+        # TODO: 3.a. Add targets to the map
+        # TODO: 3.b. Add weapon in the air to the map
+        all_features = [
+            message["featureCollection"]["features"][0],  # Ship 1
+            message["featureCollection"]["features"][1],  # Ship 2
             low_range_dict,  # Range circle: Low
             short_range_dict,  # Range circle: Short
             long_range_dict,  # Range circle: Long
         ]
 
-        start_msg["featureCollection"]['features'] = self.ship_features
+        message["featureCollection"]['features'] = all_features
 
-        self.serge_game.send_message(start_msg)
+        return message
+
+    def _update_state_of_the_world(self) -> None:
+        mapping_msg = self._construct_mapping_message()
+        self.serge_game.send_message(mapping_msg)
 
     def _poll_serge_messages(self) -> None:
         """
@@ -360,7 +367,7 @@ class SergeEnvRunner:
         """
         # TODO: 1. Generate the array of actions from WA messages
         # TODO: 2. Execute the queued actions and get the new observations
-        # TODO: 3. Update the state of the world (create a new mapping message with the new state and send it to Serge)
+        self._update_state_of_the_world()
         # TODO: 4. Send chat updates (TBD)
         # TODO: 5. Generate and send new WA messages
 
@@ -380,7 +387,7 @@ class SergeEnvRunner:
             if reset:
                 # initiliaze a new game
                 self._reset_env()
-                self._send_new_game_messages()  # add the objects (ships and range circles) to the map
+                self._update_state_of_the_world()  # add the objects (ships and range circles) to the map
                 reset = False
 
             # TODO: Wait for a few seconds before checking for new messages
