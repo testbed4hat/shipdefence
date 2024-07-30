@@ -1,14 +1,20 @@
-from testbed4hat.testbed4hat.hat_env import HatEnv
-from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
-from testbed4hat.testbed4hat.utils import compute_pk_ring_radii
-from typing import Union, Tuple
-from serge import MSG_MAPPING_SHIPS, MSG_WA, MSG_CHAT, SergeGame
+import time
+from copy import deepcopy
+from datetime import datetime
+from typing import Tuple
+from warnings import warn
+
+import numpy as np
 import pyproj
 from pyproj import CRS, Transformer
 from shapely.geometry import Point
 from shapely.ops import transform
-from datetime import datetime
-from copy import deepcopy
+
+from serge import MSG_MAPPING_SHIPS, SergeGame
+from testbed4hat.testbed4hat.hat_env import HatEnv
+from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
+from testbed4hat.testbed4hat.heuristic_agent import HeuristicAgent
+from testbed4hat.testbed4hat.utils import compute_pk_ring_radii
 
 THREAT_TEMPLATE = {
     "geometry": {"coordinates": [43.21484211402448, 12.819648833091783], "type": "Point"},
@@ -51,6 +57,42 @@ WEAPON_TEMPLATE = {
     "type": "Feature",
 }
 
+SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
+    "_id": "UNSPECIFIED",
+    "messageType": "CustomMessage",
+    "templateId": "WA Message",
+    "details": {
+        "channel": "UNSPECIFIED",  # the channel corresponds to a ship
+        "from": {
+            "force": "Taskforce",
+            "forceId": "f-taskforce",
+            "forceColor": "#3dd0ff",
+            "roleName": "AI Assistant",
+            "roleId": {
+                "forceId": "f-taskforce",
+                "forceName": "Taskforce",
+                "roleId": "ai-assistant",
+                "roleName": "AI Assistant",
+            },
+            "iconURL": "http://localhost:8080/default_img/forceDefault.png",
+        },
+        "timestamp": "UNSPECIFIED",
+        "turnNumber": None,
+        "collaboration": {"status": "Pending review", "lastUpdated": "UNSPECIFIED"},
+    },
+    "message": {
+        "Threat": {
+            "Detected type": "ASM",
+            "Expected ETA": "UNSPECIFIED",
+            "ID": "UNSPECIFIED",
+            "Ship Targeted": "UNSPECIFIED",
+            "Velocity": None,
+        },
+        "Title": "UNSPECIFIED",
+        "Weapon": "UNSPECIFIED",
+    },
+}
+
 
 def geodesic_point_buffer(lat, lon, m):
     # Azimuthal equidistant projection
@@ -77,6 +119,8 @@ def get_pd_polygons(lat, lon):
 
 class SergeEnvRunner:
     WEAPON_STR_TO_INT = {"Long Range": 0, "Short Range": 1}
+    WEAPON_INT_TO_STR = {0: "Long Range", 1: "Short Range"}
+    WAIT_TIME_BETWEEN_POLLS = 3
 
     def __init__(self, game_id: str, server_url: str = "https://serge-inet.herokuapp.com"):
         # todo: log game to local storage?
@@ -140,21 +184,19 @@ class SergeEnvRunner:
         self.turn = None
         self.turn_actions = None
         self.ship_features = None
+        self.heuristic_agent = None
 
         # serge setup vars
         self.game_id = game_id
         self.url = server_url
         self.serge_game = SergeGame(game_id=game_id, server_url=server_url)  # interface to Serge
+        self.ship_1_channel_id = None
+        self.ship_2_channel_id = None
+        self.ship_1_serge_name = "ALPHA"
+        self.ship_2_serge_name = "BRAVO"
 
         # serge state variables
         self.messages_queue: list[dict] = []  # the list of Serge messages waiting to be processed
-
-        # bools
-        self.should_get_wargame: bool = True
-        self.should_get_wargame_last: bool = True
-        self.should_send_message: bool = False
-        self.should_send_chat_message: bool = False
-        self.should_send_WA_message: bool = False
 
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
@@ -162,11 +204,16 @@ class SergeEnvRunner:
         self.truncated = False
         self.turn = 0
         self.turn_actions = []
+        self.heuristic_agent = HeuristicAgent(
+            self.env_config.weapon_0_speed, self.env_config.weapon_1_speed,
+            threshold=0.5,  # arbitrary choice, update as needed for desired performance
+            max_actions=4
+        )
 
     def _convert_wa_message_to_action(self, wa_message) -> Tuple[int, int, str]:
         # # WA message
         # Tuple is (ship_number: int, weapon_type: int, threat_id: str)
-        ship_number = 0 if wa_message['channel'] == self.serge_game.MAPPING_SHIP[1] else 1  # todo: verify!
+        ship_number = 0 if wa_message['channel'] == self.ship_1_channel_id else 1  # todo: verify!
         weapon_type = self.WEAPON_STR_TO_INT[wa_message['message']["Weapon"]]  # todo: verify!
         threat_id = wa_message['message']["Title"]  # todo: verify!
         return ship_number, weapon_type, threat_id
@@ -190,6 +237,43 @@ class SergeEnvRunner:
         # convert to Lat-Long
         lat, long = self.coordinate_projector(x_adjusted, y_adjusted, inverse=True)
         return lat, long
+
+    def _make_suggested_action_message(self, action_tuple: tuple) -> dict:
+        WA_MSG = deepcopy(SUGGESTED_ACTION_TEMPLATE)
+        # Message 'id' is specified in serge_game.send_message()
+        # Message 'details.timestamp` specified in serge_game.send_massage()
+        # todo: how to specify 'details.collaboration.lastUpdated'?
+
+        assert action_tuple[0] in [0, 1]
+        assert action_tuple[1] in [0, 1]
+        ship_id = action_tuple[0]
+        weapon_type = action_tuple[1]
+        threat_id = action_tuple[2]
+
+        WA_MSG['details']["channel"] = self.ship_1_channel_id if ship_id == 0 else self.ship_2_channel_id
+        WA_MSG['details']["turnNumber"] = self.turn
+        threat_info = None
+        for threat in self.obs['ship_1']['threats'] + self.obs['ship_2']['threats']:
+            if threat_id == threat['threat_id']:
+                threat_info = threat
+                break
+        WA_MSG['message']['Threat']["Expected ETA"] = threat_info['estimated_time_of_arrival']
+        WA_MSG['message']['Threat']["ID"] = threat_info['threat_id']
+        target_ship = int(threat_info['target_ship'])
+        assert target_ship in [1, 2]  # ship IDs are 1 indexed
+        ship_targeted = self.ship_1_serge_name if target_ship == 1 else self.ship_2_serge_name
+        WA_MSG['message']['Threat']["Ship Targeted"] = ship_targeted
+        scalar_vel = np.linalg.norm(self.obs['ship_1']['velocity'])
+        WA_MSG['message']['Threat']["Velocity"] = scalar_vel
+        WA_MSG['message']['Title'] = threat_info['threat_id']
+        WA_MSG['message']['Weapon'] = self.WEAPON_INT_TO_STR[weapon_type]
+        return WA_MSG
+
+    def _send_suggested_actions(self) -> None:
+        action = self.heuristic_agent.heuristic_action(self.obs)
+        for a in action:
+            action_msg = self._make_suggested_action_message(a)
+            self.serge_game.send_message(action_msg)
 
     def _make_threat_dict(self, threat: dict) -> dict:
         threat_dict = deepcopy(THREAT_TEMPLATE)
@@ -303,10 +387,7 @@ class SergeEnvRunner:
         long_range_dict["properties"]["color"] = "#555"
         long_range_dict["geometry"]["coordinates"] = self.long_weapon_range_polygon
 
-        # TODO: 3.c. Update the ships' statuses (any damage, disabled, sunk?)
-        # TODO: 3.a. Add targets to the map
-        # TODO: 3.b. Add weapon in the air to the map
-        all_features = [
+        self.ship_features = [
             message["featureCollection"]["features"][0],  # Ship 1
             message["featureCollection"]["features"][1],  # Ship 2
             low_range_dict,  # Range circle: Low
@@ -314,13 +395,16 @@ class SergeEnvRunner:
             long_range_dict,  # Range circle: Long
         ]
 
-        message["featureCollection"]['features'] = all_features
+        message["featureCollection"]['features'] = self.ship_features
 
         return message
 
-    def _update_state_of_the_world(self) -> None:
-        mapping_msg = self._construct_mapping_message()
-        self.serge_game.send_message(mapping_msg)
+    def _update_state_of_the_world(self, reset=False) -> None:
+        if reset:
+            mapping_msg = self._construct_mapping_message()
+            self.serge_game.send_message(mapping_msg)
+        else:
+            self._send_step_message()
 
     def _poll_serge_messages(self) -> None:
         """
@@ -328,29 +412,44 @@ class SergeEnvRunner:
         """
 
         # Read all new messages from the server
-        last_message_id = self.messages_queue[-1]["id"] if self.messages_queue else None
+
+        # Chace: What are these lines for? They don't actually to work, did I get the right idea below it?
+        # last_message_id = self.messages_queue[-1]["id"] if self.messages_queue else None
         # new_messages = self.serge_game.get_messages(last_message_id=last_message_id)
-        # self.messages_queue.extend(new_messages)
+
+        new_messages = self.serge_game.get_wargame_last()
+        self.messages_queue.extend(new_messages)
 
         # Process all messages in the queue
-        while self.messages_queue:
+        while len(self.messages_queue) > 0:
             message = self.messages_queue.pop(0)
             message_type = message["messageType"]
 
-            # TODO: Process one message at a time
+            # Process one message at a time
             if message_type == "CustomMessage":
                 # Process custom messages (Chat, WA)
                 self.process_custom_message(message)
             elif message_type == "InfoMessage":
-                # TODO: What if the game has moved several turns ahead? This is unlikely to happen, but we should have
+                # get the ship channel Unique IDs from Serge, if we don't already have them (for WA messages)
+                if (self.ship_1_channel_id is None or self.ship_2_channel_id is None) and 'data' in message:
+                    if 'channels' in message['data'] and 'channels' in message['data']['channels']:
+                        for channel in message['data']['channels']['channels']:
+                            if channel['name'] == self.ship_1_serge_name:
+                                self.ship_1_channel_id = channel['uniqid']
+                            if channel['name'] == self.ship_2_serge_name:
+                                self.ship_2_channel_id = channel['uniqid']
+
+                # What if the game has moved several turns ahead? This is unlikely to happen, but we should have
                 #  a guard against this.
+                if message["gameTurn"] != self.turn and message["gameTurn"] - self.turn > 1:
+                    raise ValueError("Serge/Sim out of sync! Serge game turn is ahead of sim turn by more than one!")
+
                 if message["gameTurn"] == self.turn and message["phase"] == "adjudication":
                     self.process_adjudication_phase()
                 elif message["gameTurn"] > self.turn and message["phase"] == "planning":
-                    self.proceed_to_next_turn()
+                    self._step_environment()
             else:  # skipping all other message types
-                # TODO: print out a warning to avoid missing important message types in the future
-                pass
+                warn(f"Unexpected message type received! Type: {message_type}")
 
     def process_custom_message(self, message: dict) -> None:
         """
@@ -358,24 +457,19 @@ class SergeEnvRunner:
         """
         msg_template = message["templateId"]
         if msg_template == "WA Message":
-            # TODO: Store the message in the queue to process when the adjudication phase starts
-            pass
+            # Store the message in the queue to process when the adjudication phase starts
+            self._process_action_msg(message)
 
     def process_adjudication_phase(self) -> None:
         """
         Processes all the actions that were sent during the turn
         """
-        # TODO: 1. Generate the array of actions from WA messages
-        # TODO: 2. Execute the queued actions and get the new observations
+        # 1. Generate the array of actions from WA messages (already done in self.process_custom_message)
+        # 2. Execute the queued actions and get the new observations
         self._update_state_of_the_world()
         # TODO: 4. Send chat updates (TBD)
-        # TODO: 5. Generate and send new WA messages
-
-    def proceed_to_next_turn(self) -> None:
-        """
-        Proceeds to the next turn
-        """
-        pass
+        # 5. Generate and send new WA messages
+        self._send_suggested_actions()
 
     def run(self):
         self.env = HatEnv(self.env_config)
@@ -385,12 +479,13 @@ class SergeEnvRunner:
 
         while running:
             if reset:
-                # initiliaze a new game
+                # initialize a new game
                 self._reset_env()
-                self._update_state_of_the_world()  # add the objects (ships and range circles) to the map
+                self._update_state_of_the_world(reset=True)  # add the objects (ships and range circles) to the map
                 reset = False
 
-            # TODO: Wait for a few seconds before checking for new messages
+            # Wait for a few seconds before checking for new messages
+            time.sleep(self.WAIT_TIME_BETWEEN_POLLS)
 
             self._poll_serge_messages()
 
@@ -400,6 +495,6 @@ class SergeEnvRunner:
 
 if __name__ == '__main__':
     # game_id = "wargame-lxcd9mgw"
-    game_id = "wargame-lyqd59s8"
+    game_id = "wargame-lz8o85i2"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
