@@ -310,62 +310,20 @@ class SergeEnvRunner:
         weapon_dict['properties']['PK'] = weapon['probability_of_kill']
         return weapon_dict
 
-    def _send_step_message(self) -> None:
-        # Convert the observation to a Serge message and send it to Serge
-        ship_1_weapon_0_inventory = self.obs['ship_1']['inventory']["weapon_0_inventory"]
-        ship_1_weapon_1_inventory = self.obs['ship_1']['inventory']["weapon_1_inventory"]
-        ship_2_weapon_0_inventory = self.obs['ship_2']['inventory']["weapon_0_inventory"]
-        ship_2_weapon_1_inventory = self.obs['ship_2']['inventory']["weapon_1_inventory"]
-
-        threat_ids = set()
-        threats = []
-        for threat in self.obs['ship_1']['threats']:
-            threat_ids.add(threat['threat_id'])
-            threat_dict = self._make_threat_dict(threat)
-            threats.append(threat_dict)
-
-        for threat in self.obs['ship_2']['threats']:
-            threat_id = threat['threat_id']
-            if threat_id not in threat_ids:
-                threat_ids.add(threat['threat_id'])
-                threat_dict = self._make_threat_dict(threat)
-                threats.append(threat_dict)
-
-        weapons = []
-        weapon_ids = set()
-        for weapon in self.obs['ship_1']['weapons']:
-            weapon_ids.add(weapon['weapon_id'])
-            weapon_dict = self._make_weapon_dict(weapon)
-            weapons.append(weapon_dict)
-
-        for weapon in self.obs['ship_2']['weapons']:
-            weapon_id = weapon['weapon_id']
-            if weapon_id not in weapon_ids:
-                weapon_ids.add(weapon['weapon_id'])
-                weapon_dict = self._make_weapon_dict(weapon)
-                weapons.append(weapon_dict)
-
-        step_message = deepcopy(MSG_MAPPING_SHIPS)
-
-        step_message["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
-        step_message["featureCollection"]["features"][0]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
-        step_message["featureCollection"]["features"][0]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
-
-        step_message["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
-        step_message["featureCollection"]["features"][1]["properties"]["Long Range ammo"] = ship_2_weapon_0_inventory
-        step_message["featureCollection"]["features"][1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
-
-        step_message['featureCollection']['features'] = self.ship_features + threats + weapons
-        step_message['details']['turn_number'] = self.turn
-        step_message['details']['timestamp'] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
-
-        self.serge_game.send_message(step_message)
-
-    def _construct_mapping_message(self) -> dict:
+    def _build_ship_features(self):
         # constructing the mapping message from the template
         message = deepcopy(MSG_MAPPING_SHIPS)
         message["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
         message["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
+
+        ship_1_weapon_0_inventory = self.obs['ship_1']['inventory']["weapon_0_inventory"]
+        ship_1_weapon_1_inventory = self.obs['ship_1']['inventory']["weapon_1_inventory"]
+        ship_2_weapon_0_inventory = self.obs['ship_2']['inventory']["weapon_0_inventory"]
+        ship_2_weapon_1_inventory = self.obs['ship_2']['inventory']["weapon_1_inventory"]
+        message["featureCollection"]["features"][0]["properties"]["weapon_0_inventory"] = ship_1_weapon_0_inventory
+        message["featureCollection"]["features"][0]["properties"]["weapon_1_inventory"] = ship_1_weapon_1_inventory
+        message["featureCollection"]["features"][1]["properties"]["weapon_0_inventory"] = ship_2_weapon_0_inventory
+        message["featureCollection"]["features"][1]["properties"]["weapon_1_inventory"] = ship_2_weapon_1_inventory
 
         # make range polygon features
         range_dict = message["featureCollection"]["features"][2]
@@ -393,16 +351,69 @@ class SergeEnvRunner:
             long_range_dict,  # Range circle: Long
         ]
 
-        message["featureCollection"]['features'] = self.ship_features
+    def _build_step_message(self) -> dict:
+        # Convert the observation to a Serge message and send it to Serge
 
-        return message
+        # get threats
+        threat_ids = set()
+        threats = []
+        for threat in self.obs['ship_1']['threats']:
+            threat_ids.add(threat['threat_id'])
+            threat_dict = self._make_threat_dict(threat)
+            threats.append(threat_dict)
 
-    def _update_state_of_the_world(self, reset=False) -> None:
-        if reset:
-            mapping_msg = self._construct_mapping_message()
-            self.serge_game.send_message(mapping_msg)
-        else:
-            self._send_step_message()
+        for threat in self.obs['ship_2']['threats']:
+            threat_id = threat['threat_id']
+            if threat_id not in threat_ids:
+                threat_ids.add(threat['threat_id'])
+                threat_dict = self._make_threat_dict(threat)
+                threats.append(threat_dict)
+
+        # get weapons
+        weapons = []
+        weapon_ids = set()
+        for weapon in self.obs['ship_1']['weapons']:
+            weapon_ids.add(weapon['weapon_id'])
+            weapon_dict = self._make_weapon_dict(weapon)
+            weapons.append(weapon_dict)
+
+        for weapon in self.obs['ship_2']['weapons']:
+            weapon_id = weapon['weapon_id']
+            if weapon_id not in weapon_ids:
+                weapon_ids.add(weapon['weapon_id'])
+                weapon_dict = self._make_weapon_dict(weapon)
+                weapons.append(weapon_dict)
+
+        step_message = deepcopy(MSG_MAPPING_SHIPS)
+
+        if not self.ship_features:
+            # should only occur once, on the first step
+            self._build_ship_features()
+
+        # update ship weapon inventories
+        ship_features = self.ship_features
+        ship_1_weapon_0_inventory = self.obs['ship_1']['inventory']["weapon_0_inventory"]
+        ship_1_weapon_1_inventory = self.obs['ship_1']['inventory']["weapon_1_inventory"]
+        ship_2_weapon_0_inventory = self.obs['ship_2']['inventory']["weapon_0_inventory"]
+        ship_2_weapon_1_inventory = self.obs['ship_2']['inventory']["weapon_1_inventory"]
+        ship_features[0]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
+        ship_features[0]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
+        ship_features[1]["properties"]["Long Range ammo"] = ship_2_weapon_0_inventory
+        ship_features[1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
+
+        step_message['featureCollection']['features'] = ship_features + threats + weapons
+        step_message['details']['turn_number'] = self.turn
+        step_message['details']['timestamp'] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
+
+        return step_message
+
+    def _update_serge_state_of_the_world(self) -> None:
+        """
+        Send a message to the serge server to update the serge state. (Separate from sim update, which occurs when
+        entering planning phase).
+        """
+        mapping_msg = self._build_step_message()
+        self.serge_game.send_message(mapping_msg)
 
     def _poll_serge_messages(self) -> None:
         """
@@ -464,7 +475,7 @@ class SergeEnvRunner:
         """
         # 1. Generate the array of actions from WA messages (already done in self.process_custom_message)
         # 2. Execute the queued actions and get the new observations
-        self._update_state_of_the_world()
+        self._update_serge_state_of_the_world()
         # TODO: 4. Send chat updates (TBD)
         # 5. Generate and send new WA messages
         self._send_suggested_actions()
@@ -479,7 +490,7 @@ class SergeEnvRunner:
             if reset:
                 # initialize a new game
                 self._reset_env()
-                self._update_state_of_the_world(reset=True)  # add the objects (ships and range circles) to the map
+                self._update_serge_state_of_the_world()  # add the objects (ships and range circles) to the map
                 reset = False
 
             # Wait for a few seconds before checking for new messages
