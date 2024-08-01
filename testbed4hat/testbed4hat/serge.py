@@ -79,13 +79,13 @@ class SergeGame:
         if "_rev" in message:
             del message["_rev"]
         # setting the message metadata
-        timestamp = datetime.now(UTC).isoformat()
-        message["details"].update({"timestamp": timestamp})
+        timestamp_str = datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        message["details"].update({"timestamp": timestamp_str})
         if "collaboration" in message["details"]:
             # applies to WA messages only
-            message["details"]["collaboration"]["lastUpdated"] = timestamp
+            message["details"]["collaboration"]["lastUpdated"] = timestamp_str
         message["details"].update({"turnNumber": self.turn_number})
-        message["_id"] = timestamp
+        message["_id"] = timestamp_str
 
         # posting the message to the game
         response = requests.put(self.api_endpoint, json.dumps(message), headers={"Content-Type": "application/json"})
