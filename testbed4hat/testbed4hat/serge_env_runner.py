@@ -306,6 +306,7 @@ class SergeEnvRunner:
         weapon_lat, weapon_long = self._sim_xy_to_lat_long(weapon_x, weapon_y)
         weapon_dict['geometry']['coordinates'] = [weapon_long, weapon_lat]  # serge wants long-lat
         weapon_dict['properties']['id'] = weapon['weapon_id']
+        weapon_dict['properties']['label'] = weapon['weapon_id']
         weapon_dict['properties']['turn'] = self.turn
         weapon_dict['properties']["Expected ETA"] = weapon['time_left']
         weapon_dict['properties']["Threat Targeted"] = weapon['target_id']
