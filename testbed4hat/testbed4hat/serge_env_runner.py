@@ -348,17 +348,16 @@ class SergeEnvRunner:
         step_message = deepcopy(MSG_MAPPING_SHIPS)
 
         step_message["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
+        step_message["featureCollection"]["features"][0]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
+        step_message["featureCollection"]["features"][0]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
+
         step_message["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
+        step_message["featureCollection"]["features"][1]["properties"]["Long Range ammo"] = ship_2_weapon_0_inventory
+        step_message["featureCollection"]["features"][1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
 
         step_message['featureCollection']['features'] = self.ship_features + threats + weapons
         step_message['details']['turn_number'] = self.turn
         step_message['details']['timestamp'] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
-
-        # Note: not sure where to put these yet...
-        step_message['Ship 1 Long Range Inventory'] = ship_1_weapon_0_inventory
-        step_message['Ship 1 Short Range Inventory'] = ship_1_weapon_1_inventory
-        step_message['Ship 2 Long Range Inventory'] = ship_2_weapon_0_inventory
-        step_message['Ship 2 Short Range Inventory'] = ship_2_weapon_1_inventory
 
         self.serge_game.send_message(step_message)
 
