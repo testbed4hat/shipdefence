@@ -228,6 +228,7 @@ class SergeEnvRunner:
 
     def _step_environment(self) -> None:
         self.obs, self.reward, self.terminated, self.truncated, self.info = self.env.step(self.turn_actions)
+        self.turn_actions = []
         self.turn += 1
 
     def _sim_xy_to_lat_long(self, x, y):
