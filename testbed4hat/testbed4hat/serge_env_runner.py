@@ -196,9 +196,6 @@ class SergeEnvRunner:
         self.ship_1_serge_name = "ALPHA"
         self.ship_2_serge_name = "BRAVO"
 
-        # serge state variables
-        self.messages_queue: list[dict] = []  # the list of Serge messages waiting to be processed
-
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
         self.terminated = False
@@ -414,17 +411,11 @@ class SergeEnvRunner:
         """
 
         # Read all new messages from the server
+        new_messages = self.serge_game.get_new_messages()
 
-        # Chace: What are these lines for? They don't actually to work, did I get the right idea below it?
-        # last_message_id = self.messages_queue[-1]["id"] if self.messages_queue else None
-        # new_messages = self.serge_game.get_messages(last_message_id=last_message_id)
-
-        new_messages = self.serge_game.get_wargame_last()
-        self.messages_queue.extend(new_messages)
-
-        # Process all messages in the queue
-        while len(self.messages_queue) > 0:
-            message = self.messages_queue.pop(0)
+        # Process all new messages
+        while len(new_messages) > 0:
+            message = new_messages.pop(0)
             message_type = message["messageType"]
 
             # Process one message at a time

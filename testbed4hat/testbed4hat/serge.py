@@ -24,20 +24,41 @@ class SergeGame:
     def __init__(self, game_id: str, server_url: str = "https://serge-inet.herokuapp.com"):
         self.url = server_url
         self.game_id = game_id
+        self.last_msg_id = None
         self.api_endpoint = f"{self.url}/{self.game_id}"
 
         # initialize the game state
         self.turn_number: int = 0
         self.game_time: time = time(hour=15, minute=0)  # TODO: to read from the game definition
 
-    def set_up_game(self):
-        # TODO: Read the game state from Serge and set up the game
-        # response = self.get_wargame()
-        self.send_message(MSG_MAPPING_SHIPS)
+    def get_new_messages(self) -> list[dict]:
+        """
+        Retrieve new messages from the game server.
+        """
+        if self.last_msg_id:
+            # Get the last document or documents since a specific ID
+            new_messages = self.get_wargame_last_id(self.last_msg_id)
+        else:
+            # Retrieve all message documents for the specified wargame.
+            new_messages = self.get_wargame()
+        if new_messages and new_messages[-1]["_id"] == "initial_wargame":
+            new_messages = new_messages[:-1]  # remove the initial war game definition message
+        if new_messages:
+            self.last_msg_id = new_messages[-1]["_id"]
+        return new_messages
 
     def get_wargame(self) -> list[dict] | None:
         try:
             response = requests.get(self.api_endpoint, timeout=5)
+            response.raise_for_status()
+            return response.json()["data"]
+        except requests.exceptions.RequestException as e:
+            print(f"Request to {self.api_endpoint} failed: {e}")
+            return None
+
+    def get_wargame_last_id(self, last_id: str) -> list[dict] | None:
+        try:
+            response = requests.get(f"{self.api_endpoint}/lastDoc/{last_id}", timeout=5)
             response.raise_for_status()
             return response.json()["data"]
         except requests.exceptions.RequestException as e:
