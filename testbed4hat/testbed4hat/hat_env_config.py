@@ -31,6 +31,7 @@ class HatEnvConfig:
     COLOR_RANGE = (0, 255)
     MAX_TIME_RANGE = (5 * 60, 60 * 60)
     HARD_SHIP_LOCATION_RANGE = (-1000, 1000)  # in meters
+    FONT_SIZE_RANGE = (12, 32)
 
     PARAM_DESCRIPTION = {
         "config": "Dictionary with HAT environment configuration parameters as key-value pairs, or string path to a "
@@ -76,6 +77,9 @@ class HatEnvConfig:
         "ship_base_width": "The base height of the ship in meters.",
         "ship_1_color": "Ship 1 color.",
         "ship_2_color": "Ship 2 color.",
+        "font_size": "The font size in for threat visualization.",
+        "font_color": "The color of the font for threat visualization.",
+        "display_threat_ids": "Whether to display threat IDs when rendering or not.",
         "threat_0_kill_radius": "Radius around ships where threat 0 is effective.",
         "threat_1_kill_radius": "Radius around ships where threat 1 is effective.",
         "threat_0_speed": "Speed of threat 0.",
@@ -123,6 +127,9 @@ class HatEnvConfig:
         "ship_base_width": int,
         "ship_1_color": tuple,
         "ship_2_color": tuple,
+        "font_size": int,
+        "font_color": tuple,
+        "display_threat_ids": bool,
         "threat_0_kill_radius": (float, int),
         "threat_1_kill_radius": (float, int),
         "threat_0_speed": (float, int),
@@ -175,6 +182,10 @@ class HatEnvConfig:
         self.ship_base_width = 200
         self.ship_1_color = (0, 255, 0)  # green
         self.ship_2_color = (0, 0, 255)  # blue
+
+        self.font_size = 18
+        self.font_color = (0, 0, 0)  # black
+        self.display_threat_ids = True
 
         # generator parameters
         self.threat_0_kill_radius = 1000
@@ -235,6 +246,7 @@ class HatEnvConfig:
                               "max_episode_time_in_seconds": self.MAX_TIME_RANGE,
                               "hard_ship_1_location": self.HARD_SHIP_LOCATION_RANGE,
                               "hard_ship_2_location": self.HARD_SHIP_LOCATION_RANGE,
+                              "font_size": self.FONT_SIZE_RANGE,
                               }
         print("The configuration object for the HatEnv environment. The configuration parameters are as follows:")
         print()
@@ -318,6 +330,10 @@ class HatEnvConfig:
         assert self.ship_base_width <= self.ship_base_length - 200  # keep reasonable proportions
         self._validate_color(self.ship_1_color)
         self._validate_color(self.ship_2_color)
+
+        assert self.FONT_SIZE_RANGE[0] <= self.font_size <= self.FONT_SIZE_RANGE[1]
+        self._validate_color(self.font_color)
+        assert isinstance(self.display_threat_ids, bool)
 
         # generator parameters
         assert isinstance(self.threat_0_kill_radius, (float, int)) and 0 < self.threat_0_kill_radius

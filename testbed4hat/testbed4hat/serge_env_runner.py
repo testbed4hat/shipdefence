@@ -193,8 +193,8 @@ class SergeEnvRunner:
         self.serge_game = SergeGame(game_id=game_id, server_url=server_url)  # interface to Serge
         self.ship_1_channel_id = None
         self.ship_2_channel_id = None
-        self.ship_1_serge_name = "ALPHA"
-        self.ship_2_serge_name = "BRAVO"
+        self.ship_1_serge_name = "Alpha"
+        self.ship_2_serge_name = "Bravo"
 
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
@@ -212,9 +212,11 @@ class SergeEnvRunner:
     def _convert_wa_message_to_action(self, wa_message) -> Tuple[int, int, str]:
         # # WA message
         # Tuple is (ship_number: int, weapon_type: int, threat_id: str)
-        ship_number = 0 if wa_message['channel'] == self.ship_1_channel_id else 1  # todo: verify!
+        assert wa_message['details']['channel'] in [self.ship_1_channel_id, self.ship_2_channel_id]  # must be set!
+        assert "threat_" in wa_message['message']['Threat']["ID"]  # threat ID must be correct format!
+        ship_number = 0 if wa_message['details']['channel'] == self.ship_1_channel_id else 1  # todo: verify!
         weapon_type = self.WEAPON_STR_TO_INT[wa_message['message']["Weapon"]]  # todo: verify!
-        threat_id = wa_message['message']["Title"]  # todo: verify!
+        threat_id = wa_message['message']['Threat']["ID"]  # todo: verify!
         return ship_number, weapon_type, threat_id
 
     def _process_action_msg(self, message) -> None:
@@ -504,6 +506,6 @@ class SergeEnvRunner:
 
 if __name__ == '__main__':
     # game_id = "wargame-lxcd9mgw"
-    game_id = "wargame-lz8rd09l"
+    game_id = "wargame-lzbiofgo"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()

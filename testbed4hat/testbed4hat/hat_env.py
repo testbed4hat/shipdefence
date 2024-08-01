@@ -91,7 +91,10 @@ class HatEnv(gym.Env):
         #   divide by smallest screen can be
         self.coordinate_size_reduction = outside_of_screen / min(self.screen_height, self.screen_width) / zoom_factor
 
-        self.screen_background_color = (255, 255, 255)  # white
+        self.screen_background_color = (255, 255, 255)  # White
+        self.font_color = self.config.font_color
+        self.font_size = self.config.font_size
+        self.display_threat_ids = self.config.display_threat_ids
 
         self.threat_0_size = self.config.threat_0_base_size / self.coordinate_size_reduction
         self.threat_1_size = self.config.threat_1_base_size / self.coordinate_size_reduction
@@ -340,7 +343,8 @@ class HatEnv(gym.Env):
             "time_left": weapon.get_current_timer(),
             "probability_of_kill": weapon.get_p_kill(),
             "distance": weapon_dist,
-            "angle": weapon_angle
+            "angle": weapon_angle,
+            "location": weapon.location
         }
         return obs
 
@@ -551,6 +555,12 @@ class HatEnv(gym.Env):
         x += self.screen_width // 2
         y += self.screen_height // 2
         pygame.draw.circle(self.screen, color, (x, y), size)
+
+        if self.display_threat_ids:
+            font = pygame.font.Font(None, self.font_size)
+            text = font.render(threat.threat_id, True, self.font_color)
+            text = pygame.transform.flip(text, False, True)
+            self.screen.blit(text, (x, y))
 
     def _draw_weapon(self, weapon: Weapon) -> None:
         color = self.weapon_0_color if weapon.weapon_type == 0 else self.weapon_1_color

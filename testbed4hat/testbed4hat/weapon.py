@@ -40,7 +40,7 @@ class Weapon:
         # defensive weapon, launched against a threat
         assert weapon_type == 0 or weapon_type == 1  # only two weapon types right now
 
-        self.ship_location = np.array(ship_location)
+        self.ship_location = np.array(ship_location).astype(float)
         self.threat = threat
         self.weapon_type = weapon_type
         self.weapon_id = weapon_id
