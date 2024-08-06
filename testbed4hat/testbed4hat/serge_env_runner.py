@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Tuple
 from warnings import warn
 
-import numpy as np
 import pyproj
 from pyproj import CRS, Transformer
 from shapely.geometry import Point
@@ -107,8 +106,8 @@ def geodesic_point_buffer(lat, lon, m):
 def get_pd_polygons(lat, lon):
     low_pk_ring_radius, short_weapon_pk_radius, long_weapon_pk_radius = compute_pk_ring_radii()
     low_pk_ring = geodesic_point_buffer(lat, lon, low_pk_ring_radius)  # in meters
-    short_weapon_pk_ring = geodesic_point_buffer(lat, lon, low_pk_ring_radius)  # in meters
-    long_weapon_pk_ring = geodesic_point_buffer(lat, lon, low_pk_ring_radius)  # in meters
+    short_weapon_pk_ring = geodesic_point_buffer(lat, lon, short_weapon_pk_radius)  # in meters
+    long_weapon_pk_ring = geodesic_point_buffer(lat, lon, long_weapon_pk_radius)  # in meters
 
     # convert to serge format
     low_pk_ring = [[list(coord) for coord in low_pk_ring]]
@@ -151,11 +150,15 @@ class SergeEnvRunner:
         config.set_parameter("hard_ship_1_location", self.hard_ship_1_location)
         config.set_parameter("hard_ship_2_location", self.hard_ship_2_location)
 
-        # tentative threat schedule
+        # tentative threat schedule: Should be 10 minutes long, with all threats getting to the ship by the last step
         threat_schedule = {
-            59: (0, 1),
-            2 * 60 - 1: (1, 0),
-            3 * 60 - 30: (1, 1)
+            10: (0, 1),  # Threat type 1 at second 10 (step 0)
+            50: (1, 0),  # Threat type 0 at second 50 (step 0)
+            1 * 60 + 10: (1, 0),  # Threat type 0 at 1 min 10 seconds (step 1)
+            2 * 60 + 30: (1, 1),  # One of each threat type at 2 min 30 seconds (step 2)
+            3 * 60 + 15: (1, 0),  # Threat type 0 at 3 min 15 seconds (step 3)
+            4 * 60 + 1: (0, 1),  # Threat type 1 at 4 min 1 second (step 4)
+            4 * 60 + 40: (1, 1)  # One of each threat type at 4 min 40 seconds (step 4)
         }
         config.set_parameter("schedule", threat_schedule)
         config.set_parameter("weapon_0_reload_time", 1)
@@ -164,10 +167,22 @@ class SergeEnvRunner:
         config.set_parameter("num_ship_1_weapon_1", 10)
         config.set_parameter("num_ship_2_weapon_0", 10)
         config.set_parameter("num_ship_2_weapon_1", 10)
+        # note that the only difference between threats in the sim is their speed and displayed size
+        threat_0_speed = 450.0 * 1000 / 3600  # 450 Km/hr -> m/s
+        threat_1_speed = 500.0 * 1000 / 3600  # 500 Km/hr -> m/s
+        config.set_parameter("threat_0_speed", threat_0_speed)
+        config.set_parameter("threat_1_speed", threat_1_speed)
+
+        min_threat_distance = 30 * 1000  # 30km -> meters
+        max_threat_distance = 40 * 1000  # 40km -> meters
+        config.set_parameter("min_threat_distance", min_threat_distance)
+        config.set_parameter("max_threat_distance", max_threat_distance)
+
         config.set_parameter("render_env", False)
+        config.set_parameter("verbose", False)
 
         # Set max time to 12 minutes
-        config.set_parameter("max_episode_time_in_seconds", 12 * 60)
+        config.set_parameter("max_episode_time_in_seconds", 10 * 60)
 
         config.set_parameter("seed", 1337)
 
@@ -209,14 +224,21 @@ class SergeEnvRunner:
             max_actions=4
         )
 
+    @staticmethod
+    def _sim_threat_id_to_serge_id(threat_id: str) -> str:
+        return threat_id[len("threat_"):]
+
+    @staticmethod
+    def _serge_threat_id_to_sim_id(threat_id: str) -> str:
+        return "threat_" + threat_id
+
     def _convert_wa_message_to_action(self, wa_message) -> Tuple[int, int, str]:
         # # WA message
         # Tuple is (ship_number: int, weapon_type: int, threat_id: str)
         assert wa_message['details']['channel'] in [self.ship_1_channel_id, self.ship_2_channel_id]  # must be set!
-        assert "threat_" in wa_message['message']['Threat']["ID"]  # threat ID must be correct format!
         ship_number = 0 if wa_message['details']['channel'] == self.ship_1_channel_id else 1  # todo: verify!
         weapon_type = self.WEAPON_STR_TO_INT[wa_message['message']["Weapon"]]  # todo: verify!
-        threat_id = wa_message['message']['Threat']["ID"]  # todo: verify!
+        threat_id = self._serge_threat_id_to_sim_id(wa_message['message']['Threat']["ID"])  # todo: verify!
         return ship_number, weapon_type, threat_id
 
     def _process_action_msg(self, message) -> None:
@@ -260,14 +282,13 @@ class SergeEnvRunner:
                 threat_info = threat
                 break
         WA_MSG['message']['Threat']["Expected ETA"] = threat_info['estimated_time_of_arrival']
-        WA_MSG['message']['Threat']["ID"] = threat_info['threat_id']
+        WA_MSG['message']['Threat']["ID"] = self._sim_threat_id_to_serge_id(threat_info['threat_id'])
         target_ship = int(threat_info['target_ship'])
         assert target_ship in [1, 2]  # ship IDs are 1 indexed
         ship_targeted = self.ship_1_serge_name if target_ship == 1 else self.ship_2_serge_name
         WA_MSG['message']['Threat']["Ship Targeted"] = ship_targeted
-        scalar_vel = np.linalg.norm(self.obs['ship_1']['velocity'])
-        WA_MSG['message']['Threat']["Velocity"] = scalar_vel
-        WA_MSG['message']['Title'] = threat_info['threat_id']
+        WA_MSG['message']['Threat']["Velocity"] = str([float(v) for v in threat_info['velocity']])
+        WA_MSG['message']['Title'] = "Suggested WA"
         WA_MSG['message']['Weapon'] = self.WEAPON_INT_TO_STR[weapon_type]
         return WA_MSG
 
@@ -285,17 +306,22 @@ class SergeEnvRunner:
         threat_lat, threat_long = self._sim_xy_to_lat_long(threat_x, threat_y)
         threat_dict['geometry']['coordinates'] = [threat_long, threat_lat]  # Serge wants long-lat
 
-        threat_dict['properties']['id'] = threat['threat_id']
-        threat_dict['properties']['label'] = threat['threat_id']
+        threat_dict['properties']['id'] = self._sim_threat_id_to_serge_id(threat['threat_id'])
+        threat_dict['properties']['label'] = "Threat " + self._sim_threat_id_to_serge_id(threat['threat_id'])
         threat_dict['properties']['turn'] = self.turn
-        threat_dict['properties']["Expected ETA"] = float(threat['estimated_time_of_arrival'])
+        threat_dict['properties']["Expected ETA"] = str(float(threat['estimated_time_of_arrival']))
         target_ship = int((threat['target_ship']))
         threat_dict['properties']["Ship Targeted"] = "Alpha" if target_ship == 1 else "Bravo"
 
-        threat_dict['properties']['Long Range PK'] = threat['weapon_0_kill_probability']
-        threat_dict['properties']['Short Range PK'] = threat['weapon_1_kill_probability']
+        threat_dict['properties']['Long Range PK'] = str(float(threat['weapon_0_kill_probability']))
+        threat_dict['properties']['Short Range PK'] = str(float(threat['weapon_1_kill_probability']))
         threat_dict['properties']['Weapons Assigned'] = threat['weapons_assigned']
-        threat_dict['properties']['Weapons Assigned PK'] = threat['weapons_assigned_p_kill']
+        threat_dict['properties']['Weapons Assigned PK'] = str(
+            [float(t) for t in threat['weapons_assigned_p_kill']]
+        )
+        threat_dict['properties']["Velocity"] = str(
+            [float(t) for t in threat['velocity']]
+        )
         # want weapon assigned type?
         return threat_dict
 
@@ -419,6 +445,49 @@ class SergeEnvRunner:
         mapping_msg = self._build_step_message()
         self.serge_game.send_message(mapping_msg)
 
+    def _process_custom_message(self, message: dict) -> None:
+        """
+        Processes a custom message from Serge
+        """
+        msg_template = message["templateId"]
+        if msg_template == "WA Message":
+            # Store the message in the queue to process when the adjudication phase starts
+            self._process_action_msg(message)
+
+    def _send_obs_messages(self):
+        launch_messages = self.obs['launched']
+        fail_messages = self.obs['failed']
+        other_messages = self.obs['messages']
+        # Send launched messages
+        for launch in launch_messages:
+            text = "Weapon Launched! \nWeapon info:\n"
+            for k, v in launch.items():
+                text += f"{k}: {v}\n"
+            self.serge_game.send_chat_message(text)
+        # Send failed messages
+        for fail in fail_messages:
+            text = "Miss! \nWeapon info:\n"
+            for k, v in fail.items():
+                text += f"{k}: {v}\n"
+            self.serge_game.send_chat_message(text)
+        # Send the rest of the messages
+        for other in other_messages:
+            self.serge_game.send_chat_message(other)
+
+    def _process_adjudication_phase(self) -> None:
+        """
+        Processes all the actions that were sent during the turn
+        """
+        # 1. Generate the array of actions from WA messages (already done in self.process_custom_message)
+        # 2. Execute the queued actions and get the new observations
+        self._step_environment()
+        # 3. Send serge the new sim state
+        self._update_serge_state_of_the_world()
+        # 4. Send serge sim-generated messages
+        self._send_obs_messages()
+        # 5. Generate and send new WA messages from AI
+        self._send_suggested_actions()
+
     def _poll_serge_messages(self) -> None:
         """
         Polls the Serge server for messages and processes them
@@ -435,8 +504,7 @@ class SergeEnvRunner:
             # Process one message at a time
             if message_type == "CustomMessage":
                 # Process custom messages (Chat, WA)
-                print("custom message received")
-                self.process_custom_message(message)
+                self._process_custom_message(message)
             elif message_type == "InfoMessage":
                 # get the ship channel Unique IDs from Serge, if we don't already have them (for WA messages)
                 if (self.ship_1_channel_id is None or self.ship_2_channel_id is None) and 'data' in message:
@@ -452,37 +520,16 @@ class SergeEnvRunner:
                 if message["gameTurn"] != self.turn and message["gameTurn"] - self.turn > 1:
                     raise ValueError("Serge/Sim out of sync! Serge game turn is ahead of sim turn by more than one!")
 
-                if (message["gameTurn"] == self.turn
-                        and self.turn not in self.turns_processed  # only process turn once
+                if (message["gameTurn"] >= self.turn
+                        and message["gameTurn"] not in self.turns_processed  # only process turn once
                         and message["phase"] == "adjudication"):
-                    print("adjudication")
-                    self.process_adjudication_phase()
+                    self._process_adjudication_phase()
                     self.turns_processed.add(self.turn)
                 elif message["gameTurn"] > self.turn and message["phase"] == "planning":
-                    print("planning")
-                    self._step_environment()
+                    # Listen for messages
+                    pass
             else:  # skipping all other message types
                 warn(f"Unexpected message type received! Type: {message_type}")
-
-    def process_custom_message(self, message: dict) -> None:
-        """
-        Processes a custom message from Serge
-        """
-        msg_template = message["templateId"]
-        if msg_template == "WA Message":
-            # Store the message in the queue to process when the adjudication phase starts
-            self._process_action_msg(message)
-
-    def process_adjudication_phase(self) -> None:
-        """
-        Processes all the actions that were sent during the turn
-        """
-        # 1. Generate the array of actions from WA messages (already done in self.process_custom_message)
-        # 2. Execute the queued actions and get the new observations
-        self._update_serge_state_of_the_world()
-        # TODO: 4. Send chat updates (TBD)
-        # 5. Generate and send new WA messages
-        self._send_suggested_actions()
 
     def run(self):
         self.env = HatEnv(self.env_config)
@@ -504,10 +551,11 @@ class SergeEnvRunner:
 
             if self.terminated or self.truncated:
                 running = False
+                self.serge_game.send_chat_message("Simulation terminated.")
 
 
 if __name__ == '__main__':
     # game_id = "wargame-lxcd9mgw"
-    game_id = "wargame-lzbiofgo"
+    game_id = "wargame-lzind2c4"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
