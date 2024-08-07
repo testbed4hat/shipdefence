@@ -1,5 +1,5 @@
 # the output folder
-target
+outputs/
 
 # the local symlink
 provconvert
