@@ -424,10 +424,10 @@ class SergeEnvRunner:
         ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
         ship_2_weapon_0_inventory = self.obs["ship_2"]["inventory"]["weapon_0_inventory"]
         ship_2_weapon_1_inventory = self.obs["ship_2"]["inventory"]["weapon_1_inventory"]
-        ship_features[0]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
-        ship_features[0]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
-        ship_features[1]["properties"]["Long Range ammo"] = ship_2_weapon_0_inventory
-        ship_features[1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
+        ship_features[0]["properties"]["weapon_0_inventory"] = ship_1_weapon_0_inventory
+        ship_features[0]["properties"]["weapon_1_inventory"] = ship_1_weapon_1_inventory
+        ship_features[1]["properties"]["weapon_0_inventory"] = ship_2_weapon_0_inventory
+        ship_features[1]["properties"]["weapon_1_inventory"] = ship_2_weapon_1_inventory
 
         step_message["featureCollection"]["features"] = ship_features + threats + weapons
 
