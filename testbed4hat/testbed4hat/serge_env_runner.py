@@ -34,7 +34,6 @@ THREAT_TEMPLATE = {
         "Velocity": [850, 900],
     },
     "type": "Feature",
-
 }
 
 WEAPON_TEMPLATE = {
@@ -96,8 +95,7 @@ SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
 def geodesic_point_buffer(lat, lon, m):
     # Azimuthal equidistant projection
     # Adapted from: https://gis.stackexchange.com/questions/121256/creating-a-circle-with-radius-in-metres
-    aeqd_proj = CRS.from_proj4(
-        f"+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0")
+    aeqd_proj = CRS.from_proj4(f"+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0")
     tfmr = Transformer.from_proj(aeqd_proj, aeqd_proj.geodetic_crs)
     buf = Point(0, 0).buffer(m)  # distance in metres
     return transform(tfmr.transform, buf).exterior.coords[:]
@@ -128,17 +126,21 @@ class SergeEnvRunner:
         lat_long_zero = [12.819648833091783, 43.21484211402448]  # The lat-long coordinates of (0, 0) in the sim
 
         # Note: not confident I know how this works
-        self.coordinate_projector = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
+        self.coordinate_projector = pyproj.Proj(proj="utm", zone=31, ellps="WGS84", preserve_units=True)
 
         self.cartesian_zero = self.coordinate_projector(*lat_long_zero)
 
         self.hard_ship_1_location = [-250, -200]
         self.hard_ship_2_location = [250, 150]  # verify okay with Dong
 
-        ship_1_loc_adjusted = [self.cartesian_zero[0] + self.hard_ship_1_location[0],
-                               self.cartesian_zero[1] + self.hard_ship_1_location[1]]
-        ship_2_loc_adjusted = [self.cartesian_zero[0] + self.hard_ship_2_location[0],
-                               self.cartesian_zero[1] + self.hard_ship_2_location[1]]
+        ship_1_loc_adjusted = [
+            self.cartesian_zero[0] + self.hard_ship_1_location[0],
+            self.cartesian_zero[1] + self.hard_ship_1_location[1],
+        ]
+        ship_2_loc_adjusted = [
+            self.cartesian_zero[0] + self.hard_ship_2_location[0],
+            self.cartesian_zero[1] + self.hard_ship_2_location[1],
+        ]
 
         self.ship_1_lat_long = self.coordinate_projector(*ship_1_loc_adjusted, inverse=True)
         self.ship_2_lat_long = self.coordinate_projector(*ship_2_loc_adjusted, inverse=True)
@@ -158,7 +160,7 @@ class SergeEnvRunner:
             2 * 60 + 30: (1, 1),  # One of each threat type at 2 min 30 seconds (step 2)
             3 * 60 + 15: (1, 0),  # Threat type 0 at 3 min 15 seconds (step 3)
             4 * 60 + 1: (0, 1),  # Threat type 1 at 4 min 1 second (step 4)
-            4 * 60 + 40: (1, 1)  # One of each threat type at 4 min 40 seconds (step 4)
+            4 * 60 + 40: (1, 1),  # One of each threat type at 4 min 40 seconds (step 4)
         }
         config.set_parameter("schedule", threat_schedule)
         config.set_parameter("weapon_0_reload_time", 1)
@@ -219,14 +221,15 @@ class SergeEnvRunner:
         self.turn_actions = []
         self.turns_processed = set()
         self.heuristic_agent = HeuristicAgent(
-            self.env_config.weapon_0_speed, self.env_config.weapon_1_speed,
+            self.env_config.weapon_0_speed,
+            self.env_config.weapon_1_speed,
             threshold=0.5,  # arbitrary choice, update as needed for desired performance
-            max_actions=4
+            max_actions=4,
         )
 
     @staticmethod
     def _sim_threat_id_to_serge_id(threat_id: str) -> str:
-        return threat_id[len("threat_"):]
+        return threat_id[len("threat_") :]
 
     @staticmethod
     def _serge_threat_id_to_sim_id(threat_id: str) -> str:
@@ -235,10 +238,10 @@ class SergeEnvRunner:
     def _convert_wa_message_to_action(self, wa_message) -> Tuple[int, int, str]:
         # # WA message
         # Tuple is (ship_number: int, weapon_type: int, threat_id: str)
-        assert wa_message['details']['channel'] in [self.ship_1_channel_id, self.ship_2_channel_id]  # must be set!
-        ship_number = 0 if wa_message['details']['channel'] == self.ship_1_channel_id else 1  # todo: verify!
-        weapon_type = self.WEAPON_STR_TO_INT[wa_message['message']["Weapon"]]  # todo: verify!
-        threat_id = self._serge_threat_id_to_sim_id(wa_message['message']['Threat']["ID"])  # todo: verify!
+        assert wa_message["details"]["channel"] in [self.ship_1_channel_id, self.ship_2_channel_id]  # must be set!
+        ship_number = 0 if wa_message["details"]["channel"] == self.ship_1_channel_id else 1  # todo: verify!
+        weapon_type = self.WEAPON_STR_TO_INT[wa_message["message"]["Weapon"]]  # todo: verify!
+        threat_id = self._serge_threat_id_to_sim_id(wa_message["message"]["Threat"]["ID"])  # todo: verify!
         return ship_number, weapon_type, threat_id
 
     def _process_action_msg(self, message) -> None:
@@ -274,22 +277,22 @@ class SergeEnvRunner:
         weapon_type = action_tuple[1]
         threat_id = action_tuple[2]
 
-        WA_MSG['details']["channel"] = self.ship_1_channel_id if ship_id == 0 else self.ship_2_channel_id
-        WA_MSG['details']["turnNumber"] = self.turn
+        WA_MSG["details"]["channel"] = self.ship_1_channel_id if ship_id == 0 else self.ship_2_channel_id
+        WA_MSG["details"]["turnNumber"] = self.turn
         threat_info = None
-        for threat in self.obs['ship_1']['threats'] + self.obs['ship_2']['threats']:
-            if threat_id == threat['threat_id']:
+        for threat in self.obs["ship_1"]["threats"] + self.obs["ship_2"]["threats"]:
+            if threat_id == threat["threat_id"]:
                 threat_info = threat
                 break
-        WA_MSG['message']['Threat']["Expected ETA"] = threat_info['estimated_time_of_arrival']
-        WA_MSG['message']['Threat']["ID"] = self._sim_threat_id_to_serge_id(threat_info['threat_id'])
-        target_ship = int(threat_info['target_ship'])
+        WA_MSG["message"]["Threat"]["Expected ETA"] = threat_info["estimated_time_of_arrival"]
+        WA_MSG["message"]["Threat"]["ID"] = self._sim_threat_id_to_serge_id(threat_info["threat_id"])
+        target_ship = int(threat_info["target_ship"])
         assert target_ship in [1, 2]  # ship IDs are 1 indexed
         ship_targeted = self.ship_1_serge_name if target_ship == 1 else self.ship_2_serge_name
-        WA_MSG['message']['Threat']["Ship Targeted"] = ship_targeted
-        WA_MSG['message']['Threat']["Velocity"] = str([float(v) for v in threat_info['velocity']])
-        WA_MSG['message']['Title'] = "Suggested WA"
-        WA_MSG['message']['Weapon'] = self.WEAPON_INT_TO_STR[weapon_type]
+        WA_MSG["message"]["Threat"]["Ship Targeted"] = ship_targeted
+        WA_MSG["message"]["Threat"]["Velocity"] = str([float(v) for v in threat_info["velocity"]])
+        WA_MSG["message"]["Title"] = "Suggested WA"
+        WA_MSG["message"]["Weapon"] = self.WEAPON_INT_TO_STR[weapon_type]
         return WA_MSG
 
     def _send_suggested_actions(self) -> None:
@@ -300,44 +303,40 @@ class SergeEnvRunner:
 
     def _make_threat_dict(self, threat: dict) -> dict:
         threat_dict = deepcopy(THREAT_TEMPLATE)
-        threat_x, threat_y = threat['location']
+        threat_x, threat_y = threat["location"]
 
         # convert to Lat-Long
         threat_lat, threat_long = self._sim_xy_to_lat_long(threat_x, threat_y)
-        threat_dict['geometry']['coordinates'] = [threat_long, threat_lat]  # Serge wants long-lat
+        threat_dict["geometry"]["coordinates"] = [threat_long, threat_lat]  # Serge wants long-lat
 
-        threat_dict['properties']['id'] = self._sim_threat_id_to_serge_id(threat['threat_id'])
-        threat_dict['properties']['label'] = "Threat " + self._sim_threat_id_to_serge_id(threat['threat_id'])
-        threat_dict['properties']['turn'] = self.turn
-        threat_dict['properties']["Expected ETA"] = str(float(threat['estimated_time_of_arrival']))
-        target_ship = int((threat['target_ship']))
-        threat_dict['properties']["Ship Targeted"] = "Alpha" if target_ship == 1 else "Bravo"
+        threat_dict["properties"]["id"] = self._sim_threat_id_to_serge_id(threat["threat_id"])
+        threat_dict["properties"]["label"] = "Threat " + self._sim_threat_id_to_serge_id(threat["threat_id"])
+        threat_dict["properties"]["turn"] = self.turn
+        threat_dict["properties"]["Expected ETA"] = str(float(threat["estimated_time_of_arrival"]))
+        target_ship = int((threat["target_ship"]))
+        threat_dict["properties"]["Ship Targeted"] = "Alpha" if target_ship == 1 else "Bravo"
 
-        threat_dict['properties']['Long Range PK'] = str(float(threat['weapon_0_kill_probability']))
-        threat_dict['properties']['Short Range PK'] = str(float(threat['weapon_1_kill_probability']))
-        threat_dict['properties']['Weapons Assigned'] = threat['weapons_assigned']
-        threat_dict['properties']['Weapons Assigned PK'] = str(
-            [float(t) for t in threat['weapons_assigned_p_kill']]
-        )
-        threat_dict['properties']["Velocity"] = str(
-            [float(t) for t in threat['velocity']]
-        )
+        threat_dict["properties"]["Long Range PK"] = str(float(threat["weapon_0_kill_probability"]))
+        threat_dict["properties"]["Short Range PK"] = str(float(threat["weapon_1_kill_probability"]))
+        threat_dict["properties"]["Weapons Assigned"] = threat["weapons_assigned"]
+        threat_dict["properties"]["Weapons Assigned PK"] = str([float(t) for t in threat["weapons_assigned_p_kill"]])
+        threat_dict["properties"]["Velocity"] = str([float(t) for t in threat["velocity"]])
         # want weapon assigned type?
         return threat_dict
 
     def _make_weapon_dict(self, weapon: dict) -> dict:
         weapon_dict = deepcopy(WEAPON_TEMPLATE)
-        weapon_x, weapon_y = weapon['location']
+        weapon_x, weapon_y = weapon["location"]
 
         # convert to Lat-Long
         weapon_lat, weapon_long = self._sim_xy_to_lat_long(weapon_x, weapon_y)
-        weapon_dict['geometry']['coordinates'] = [weapon_long, weapon_lat]  # serge wants long-lat
-        weapon_dict['properties']['id'] = weapon['weapon_id']
-        weapon_dict['properties']['label'] = weapon['weapon_id']
-        weapon_dict['properties']['turn'] = self.turn
-        weapon_dict['properties']["Expected ETA"] = weapon['time_left']
-        weapon_dict['properties']["Threat Targeted"] = weapon['target_id']
-        weapon_dict['properties']['PK'] = weapon['probability_of_kill']
+        weapon_dict["geometry"]["coordinates"] = [weapon_long, weapon_lat]  # serge wants long-lat
+        weapon_dict["properties"]["id"] = weapon["weapon_id"]
+        weapon_dict["properties"]["label"] = weapon["weapon_id"]
+        weapon_dict["properties"]["turn"] = self.turn
+        weapon_dict["properties"]["Expected ETA"] = weapon["time_left"]
+        weapon_dict["properties"]["Threat Targeted"] = weapon["target_id"]
+        weapon_dict["properties"]["PK"] = weapon["probability_of_kill"]
         return weapon_dict
 
     def _build_ship_features(self):
@@ -346,10 +345,10 @@ class SergeEnvRunner:
         message["featureCollection"]["features"][0]["geometry"]["coordinates"] = self.ship_1_long_lat
         message["featureCollection"]["features"][1]["geometry"]["coordinates"] = self.ship_2_long_lat
 
-        ship_1_weapon_0_inventory = self.obs['ship_1']['inventory']["weapon_0_inventory"]
-        ship_1_weapon_1_inventory = self.obs['ship_1']['inventory']["weapon_1_inventory"]
-        ship_2_weapon_0_inventory = self.obs['ship_2']['inventory']["weapon_0_inventory"]
-        ship_2_weapon_1_inventory = self.obs['ship_2']['inventory']["weapon_1_inventory"]
+        ship_1_weapon_0_inventory = self.obs["ship_1"]["inventory"]["weapon_0_inventory"]
+        ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
+        ship_2_weapon_0_inventory = self.obs["ship_2"]["inventory"]["weapon_0_inventory"]
+        ship_2_weapon_1_inventory = self.obs["ship_2"]["inventory"]["weapon_1_inventory"]
         message["featureCollection"]["features"][0]["properties"]["weapon_0_inventory"] = ship_1_weapon_0_inventory
         message["featureCollection"]["features"][0]["properties"]["weapon_1_inventory"] = ship_1_weapon_1_inventory
         message["featureCollection"]["features"][1]["properties"]["weapon_0_inventory"] = ship_2_weapon_0_inventory
@@ -387,30 +386,30 @@ class SergeEnvRunner:
         # get threats
         threat_ids = set()
         threats = []
-        for threat in self.obs['ship_1']['threats']:
-            threat_ids.add(threat['threat_id'])
+        for threat in self.obs["ship_1"]["threats"]:
+            threat_ids.add(threat["threat_id"])
             threat_dict = self._make_threat_dict(threat)
             threats.append(threat_dict)
 
-        for threat in self.obs['ship_2']['threats']:
-            threat_id = threat['threat_id']
+        for threat in self.obs["ship_2"]["threats"]:
+            threat_id = threat["threat_id"]
             if threat_id not in threat_ids:
-                threat_ids.add(threat['threat_id'])
+                threat_ids.add(threat["threat_id"])
                 threat_dict = self._make_threat_dict(threat)
                 threats.append(threat_dict)
 
         # get weapons
         weapons = []
         weapon_ids = set()
-        for weapon in self.obs['ship_1']['weapons']:
-            weapon_ids.add(weapon['weapon_id'])
+        for weapon in self.obs["ship_1"]["weapons"]:
+            weapon_ids.add(weapon["weapon_id"])
             weapon_dict = self._make_weapon_dict(weapon)
             weapons.append(weapon_dict)
 
-        for weapon in self.obs['ship_2']['weapons']:
-            weapon_id = weapon['weapon_id']
+        for weapon in self.obs["ship_2"]["weapons"]:
+            weapon_id = weapon["weapon_id"]
             if weapon_id not in weapon_ids:
-                weapon_ids.add(weapon['weapon_id'])
+                weapon_ids.add(weapon["weapon_id"])
                 weapon_dict = self._make_weapon_dict(weapon)
                 weapons.append(weapon_dict)
 
@@ -422,18 +421,18 @@ class SergeEnvRunner:
 
         # update ship weapon inventories
         ship_features = self.ship_features
-        ship_1_weapon_0_inventory = self.obs['ship_1']['inventory']["weapon_0_inventory"]
-        ship_1_weapon_1_inventory = self.obs['ship_1']['inventory']["weapon_1_inventory"]
-        ship_2_weapon_0_inventory = self.obs['ship_2']['inventory']["weapon_0_inventory"]
-        ship_2_weapon_1_inventory = self.obs['ship_2']['inventory']["weapon_1_inventory"]
+        ship_1_weapon_0_inventory = self.obs["ship_1"]["inventory"]["weapon_0_inventory"]
+        ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
+        ship_2_weapon_0_inventory = self.obs["ship_2"]["inventory"]["weapon_0_inventory"]
+        ship_2_weapon_1_inventory = self.obs["ship_2"]["inventory"]["weapon_1_inventory"]
         ship_features[0]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
         ship_features[0]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
         ship_features[1]["properties"]["Long Range ammo"] = ship_2_weapon_0_inventory
         ship_features[1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
 
-        step_message['featureCollection']['features'] = ship_features + threats + weapons
-        step_message['details']['turn_number'] = self.turn
-        step_message['details']['timestamp'] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
+        step_message["featureCollection"]["features"] = ship_features + threats + weapons
+        step_message["details"]["turn_number"] = self.turn
+        step_message["details"]["timestamp"] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
 
         return step_message
 
@@ -455,9 +454,9 @@ class SergeEnvRunner:
             self._process_action_msg(message)
 
     def _send_obs_messages(self):
-        launch_messages = self.obs['launched']
-        fail_messages = self.obs['failed']
-        other_messages = self.obs['messages']
+        launch_messages = self.obs["launched"]
+        fail_messages = self.obs["failed"]
+        other_messages = self.obs["messages"]
         # Send launched messages
         for launch in launch_messages:
             text = "Weapon Launched! \nWeapon info:\n"
@@ -507,22 +506,24 @@ class SergeEnvRunner:
                 self._process_custom_message(message)
             elif message_type == "InfoMessage":
                 # get the ship channel Unique IDs from Serge, if we don't already have them (for WA messages)
-                if (self.ship_1_channel_id is None or self.ship_2_channel_id is None) and 'data' in message:
-                    if 'channels' in message['data'] and 'channels' in message['data']['channels']:
-                        for channel in message['data']['channels']['channels']:
-                            if channel['name'] == self.ship_1_serge_name:
-                                self.ship_1_channel_id = channel['uniqid']
-                            if channel['name'] == self.ship_2_serge_name:
-                                self.ship_2_channel_id = channel['uniqid']
+                if (self.ship_1_channel_id is None or self.ship_2_channel_id is None) and "data" in message:
+                    if "channels" in message["data"] and "channels" in message["data"]["channels"]:
+                        for channel in message["data"]["channels"]["channels"]:
+                            if channel["name"] == self.ship_1_serge_name:
+                                self.ship_1_channel_id = channel["uniqid"]
+                            if channel["name"] == self.ship_2_serge_name:
+                                self.ship_2_channel_id = channel["uniqid"]
 
                 # What if the game has moved several turns ahead? This is unlikely to happen, but we should have
                 #  a guard against this.
                 if message["gameTurn"] != self.turn and message["gameTurn"] - self.turn > 1:
                     raise ValueError("Serge/Sim out of sync! Serge game turn is ahead of sim turn by more than one!")
 
-                if (message["gameTurn"] >= self.turn
-                        and message["gameTurn"] not in self.turns_processed  # only process turn once
-                        and message["phase"] == "adjudication"):
+                if (
+                    message["gameTurn"] >= self.turn
+                    and message["gameTurn"] not in self.turns_processed  # only process turn once
+                    and message["phase"] == "adjudication"
+                ):
                     self._process_adjudication_phase()
                     self.turns_processed.add(self.turn)
                 elif message["gameTurn"] > self.turn and message["phase"] == "planning":
@@ -554,7 +555,7 @@ class SergeEnvRunner:
                 self.serge_game.send_chat_message("Simulation terminated.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # game_id = "wargame-lxcd9mgw"
     game_id = "wargame-lzind2c4"
     runner = SergeEnvRunner(game_id=game_id)
