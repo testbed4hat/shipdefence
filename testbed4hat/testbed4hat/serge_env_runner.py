@@ -20,7 +20,7 @@ THREAT_TEMPLATE = {
     "properties": {
         "_type": "MilSymRenderer",
         "category": "Military",
-        "force": "f-taskforce",
+        "force": "f-militia",
         "health": 100,
         "id": "threat_id",
         "label": "Threat",
