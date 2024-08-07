@@ -202,7 +202,7 @@ class SergeEnvRunner:
         self.turn_actions = None
         self.ship_features = None
         self.heuristic_agent = None
-        self.turns_processed = None
+        self.turns_processed: set[int] = {0}
 
         # serge setup vars
         self.game_id = game_id
@@ -219,7 +219,7 @@ class SergeEnvRunner:
         self.truncated = False
         self.turn = 0
         self.turn_actions = []
-        self.turns_processed = set()
+        self.turns_processed = {0}
         self.heuristic_agent = HeuristicAgent(
             self.env_config.weapon_0_speed,
             self.env_config.weapon_1_speed,
@@ -511,21 +511,19 @@ class SergeEnvRunner:
                             if channel["name"] == self.ship_2_serge_name:
                                 self.ship_2_channel_id = channel["uniqid"]
 
+                msg_turn_number = message["gameTurn"]
                 # What if the game has moved several turns ahead? This is unlikely to happen, but we should have
                 #  a guard against this.
-                if message["gameTurn"] != self.turn and message["gameTurn"] - self.turn > 1:
+                if msg_turn_number != self.turn and msg_turn_number - self.turn > 1:
                     raise ValueError("Serge/Sim out of sync! Serge game turn is ahead of sim turn by more than one!")
 
-                if (
-                    message["gameTurn"] >= self.turn
-                    and message["gameTurn"] not in self.turns_processed  # only process turn once
-                    and message["phase"] == "adjudication"
-                ):
+                if message["phase"] == "adjudication" and msg_turn_number not in self.turns_processed:
+                    # only process turn once when we're in the adjudication phase
                     self._process_adjudication_phase()
                     self.turns_processed.add(self.turn)
-                elif message["gameTurn"] > self.turn and message["phase"] == "planning":
-                    # Listen for messages
-                    pass
+            elif message_type == "MappingMessage":
+                # ignoring mapping messages
+                pass
             else:  # skipping all other message types
                 warn(f"Unexpected message type received! Type: {message_type}")
 
