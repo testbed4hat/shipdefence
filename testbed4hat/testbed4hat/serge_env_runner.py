@@ -278,7 +278,6 @@ class SergeEnvRunner:
         threat_id = action_tuple[2]
 
         WA_MSG["details"]["channel"] = self.ship_1_channel_id if ship_id == 0 else self.ship_2_channel_id
-        WA_MSG["details"]["turnNumber"] = self.turn
         threat_info = None
         for threat in self.obs["ship_1"]["threats"] + self.obs["ship_2"]["threats"]:
             if threat_id == threat["threat_id"]:
@@ -431,8 +430,6 @@ class SergeEnvRunner:
         ship_features[1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
 
         step_message["featureCollection"]["features"] = ship_features + threats + weapons
-        step_message["details"]["turn_number"] = self.turn
-        step_message["details"]["timestamp"] = datetime.now().strftime("%Y-%M-%dT%H:%m:%S")
 
         return step_message
 
