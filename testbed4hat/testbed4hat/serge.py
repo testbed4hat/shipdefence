@@ -7,8 +7,8 @@ class SergeGame:
     ID_CO_A = "co-alpha"
     ID_CO_B = "co-bravo"
     ID_AI = "ai-assistant"
-    TARGETING_CHANNEL_A = "lw50a2yz"
-    TARGETING_CHANNEL_B = "channel-lx32ng4o"  # TODO: change them into something friendlier
+    TARGETING_CHANNEL_A = "channel-wa-alpha"
+    TARGETING_CHANNEL_B = "channel-wa-bravo"
 
     MAPPING_CHANNEL = {
         1: TARGETING_CHANNEL_A,
@@ -282,7 +282,7 @@ MSG_CHAT = {  # a chat message
     "messageType": "CustomMessage",
     "templateId": "chat",
     "details": {
-        "channel": "lx27cacw",
+        "channel": "channel-chat",
         "from": {
             "force": "Taskforce",
             "forceColor": "#3dd0ff",
@@ -301,7 +301,7 @@ MSG_WA = {  # a weapon assignment message
     "messageType": "CustomMessage",
     "templateId": "WA Message",
     "details": {
-        "channel": "lw50a2yz",  # the channel corresponds to a ship
+        "channel": "channel-wa-alpha",  # the channel corresponds to a ship
         "from": {
             "force": "Taskforce",
             "forceId": "f-taskforce",
