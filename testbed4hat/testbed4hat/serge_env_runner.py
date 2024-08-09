@@ -529,29 +529,25 @@ class SergeEnvRunner:
 
     def run(self):
         self.env = HatEnv(self.env_config)
-
         running = True
-        reset = True
+
+        # initialize a new game
+        self._reset_env()
+        self._update_serge_state_of_the_world()
 
         while running:
-            if reset:
-                # initialize a new game
-                self._reset_env()
-                self._update_serge_state_of_the_world()  # add the objects (ships and range circles) to the map
-                reset = False
-
-            # Wait for a few seconds before checking for new messages
-            time.sleep(self.WAIT_TIME_BETWEEN_POLLS)
-
             self._poll_serge_messages()
 
             if self.terminated or self.truncated:
                 running = False
                 self.serge_game.send_chat_message("Simulation terminated.")
 
+            # Wait for a few seconds before checking for new messages
+            time.sleep(self.WAIT_TIME_BETWEEN_POLLS)
+
 
 if __name__ == "__main__":
     # game_id = "wargame-lxcd9mgw"
-    game_id = "wargame-lzind2c4"
+    game_id = "wargame-lzmmv1zh"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
