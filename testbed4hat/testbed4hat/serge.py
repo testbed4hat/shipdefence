@@ -144,11 +144,11 @@ MSG_MAPPING_SHIPS = {  # placing the two ships on the map with a 100-km range ci
     "details": {
         "channel": "core-mapping",
         "from": {
-            "force": "f-taskforce",
-            "forceColor": "#00f",
-            "iconURL": "http://localhost:8080/default_img/forceDefault.png",
-            "roleId": "ai-assistant",
-            "roleName": "AI Assistant",
+            "force": "umpire",
+            "forceColor": "#FCFBEE",
+            "iconURL": "http://localhost:8080/default_img/umpireDefault.png",
+            "roleId": "umpire",
+            "roleName": "Game Control",
         },
         "messageType": "MappingMessage",
         "timestamp": "2024-06-03T13:37:33",
