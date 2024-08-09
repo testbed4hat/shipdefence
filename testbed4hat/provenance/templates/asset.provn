@@ -1,0 +1,33 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:aserial,
+      [ prov:type='serge:Asset',
+        prov:type='var:asset_type',
+        prov:type='var:force_name',  // force name
+        serge:name='var:name',   // asset name
+        serge:contactId='var:contact_id'
+      ]
+    )
+
+    entity(var:asset,
+      [ prov:type='serge:Asset',
+        prov:type='var:asset_type',
+        serge:name='var:name',   // asset name
+        serge:position='var:position'
+      ]
+    )
+    specializationOf(var:asset, var:aserial)
+
+    entity(var:fserial)
+    hadMember(var:fserial, var:aserial)
+    entity(var:force)
+    hadMember(var:force, var:asset)
+
+  endBundle
+endDocument

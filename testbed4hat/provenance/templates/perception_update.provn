@@ -1,0 +1,32 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    agent(var:rserial)
+    agent(var:role0)
+    entity(var:fserial)
+    entity(var:force0)
+    entity(var:asset)
+
+    agent(var:role1,
+      [ prov:type='serge:Role',
+        prov:type='var:role_type',
+        prov:type='var:force_name',  // force name
+        serge:name='var:name'   // role name
+      ]
+    )
+    specializationOf(var:role1, var:rserial)
+    wasDerivedFrom(var:role1, var:role0)
+    wasDerivedFrom(var:role1, var:asset)
+
+    entity(var:force1)
+    hadMember(var:force1, var:role1)
+    wasDerivedFrom(var:force1, var:force0)
+    specializationOf(var:force1, var:fserial)
+
+  endBundle
+endDocument

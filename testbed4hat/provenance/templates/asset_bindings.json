@@ -1,0 +1,26 @@
+{
+  "var": {
+    "aserial": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "fserial": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force_name": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "name": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "contact_id": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "position": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "msg": "http://example.org/serge-game/msg/",
+    "ch": "http://example.org/serge-game/ch/",
+    "force": "http://example.org/serge-game/force/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}

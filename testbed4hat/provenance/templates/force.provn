@@ -1,0 +1,22 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:fserial,
+      [ prov:type='serge:Force',
+        serge:name='var:name'   // force name
+      ]
+    )
+
+    entity(var:force,
+      [ prov:type='serge:Force',
+        serge:name='var:name'   // force name
+      ]
+    )
+    specializationOf(var:force, var:fserial)
+  endBundle
+endDocument

@@ -1,0 +1,17 @@
+{
+  "var": {
+    "cserial": [{"@id": "ch:*", "@input": "compulsory", "@output": "false"}],
+    "channel": [{"@id": "ch:*", "@input": "compulsory", "@output": "false"}],
+    "channel_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "name": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "msg": "http://example.org/serge-game/msg/",
+    "ch": "http://example.org/serge-game/ch/",
+    "force": "http://example.org/serge-game/force/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}

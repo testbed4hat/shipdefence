@@ -1,0 +1,28 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:previous_plan)  // previous plan submitted for this asset, if any
+    
+    agent(var:sender)
+    entity(var:asset)
+    entity(var:plan,
+      [ prov:type='serge:Plan',
+        prov:type='var:plan_type',
+        prov:value='var:plan_content',
+        serge:planning_turn='var:planning_turn',
+        serge:turn_number='var:turn_number',
+        serge:asset='var:aserial',
+        serge:force='var:force'
+      ]
+    )
+    wasAttributedTo(var:plan, var:sender)
+    wasDerivedFrom(var:plan, var:asset)
+    wasDerivedFrom(var:plan, var:previous_plan)
+
+  endBundle
+endDocument

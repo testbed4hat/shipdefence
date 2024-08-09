@@ -1,0 +1,28 @@
+{
+  "var": {
+    "sender": [{"@id": "role:*", "@input": "compulsory", "@output": "false"}],
+    "aserial": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "force": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "plan": [{"@id": "plan:*", "@input": "compulsory", "@output": "false"}],
+    "plan_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "planning_turn": [
+      [{"@value": "*","@type": "xsd:int", "@input": "compulsory", "@output": "false"}]
+    ],
+    "turn_number": [
+      [{"@value": "*","@type": "xsd:int", "@input": "compulsory", "@output": "false"}]
+    ],
+    "plan_content": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "previous_plan": [{"@id": "plan:*", "@input": "compulsory", "@output": "false"}]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "plan": "http://example.org/serge-game/plan/",
+    "ch": "http://example.org/serge-game/ch/",
+    "force": "http://example.org/serge-game/force/",
+    "role": "http://example.org/serge-game/role/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}

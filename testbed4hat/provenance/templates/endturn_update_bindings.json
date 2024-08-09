@@ -1,0 +1,36 @@
+{
+  "var": {
+    "message": [{"@id": "msg:*", "@input": "compulsory", "@output": "false"}],
+    "plan": [{"@id": "plan:*", "@input": "compulsory", "@output": "false"}],
+    "aserial": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset0": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset1": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "fserial": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force0": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force1": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "name": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "condition": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "state": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "speed": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "position": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "plan": "http://example.org/serge-game/plan/",
+    "msg": "http://example.org/serge-game/msg/",
+    "force": "http://example.org/serge-game/force/",
+    "role": "http://example.org/serge-game/role/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}
