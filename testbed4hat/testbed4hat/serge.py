@@ -32,26 +32,27 @@ class SergeGame:
         self.phase: str = "adjudication"
         self.game_time: time = time(hour=15, minute=0)  # TODO: to read from the game definition
 
-    def get_new_messages(self, since_msg_id: str = None) -> list[dict]:
-        """
-        Retrieve new messages from the game server.
-        Note: the "initial_wargame" message will be discarded (last in the list).
-        """
-        if since_msg_id is None:
-            since_msg_id = self.last_msg_id
-
-        if since_msg_id:
-            # Get the last document or documents since a specific ID
-            new_messages = self._get_messages_since_id(since_msg_id)
-        else:
-            # Retrieve all message documents for the specified wargame.
-            new_messages = self._get_wargame()
-        if new_messages and new_messages[-1]["_id"] == "initial_wargame":
-            new_messages = new_messages[:-1]  # remove the initial war game definition message
+    def get_new_messages(self) -> list[dict]:
+        new_messages = self.get_messages(since_msg_id=self.last_msg_id)
         if new_messages:
             self.last_msg_id = new_messages[-1]["_id"]
             self._update_game_turn(new_messages)
         return new_messages
+
+    def get_messages(self, since_msg_id: str = None) -> list[dict]:
+        """
+        Retrieve new messages from the game server.
+        Note: the "initial_wargame" message will be discarded (last in the list).
+        """
+        if since_msg_id:
+            # Get the last document or documents since a specific ID
+            messages = self._get_messages_since_id(since_msg_id)
+        else:
+            # Retrieve all message documents for the specified wargame.
+            messages = self._get_wargame()
+        if messages and messages[-1]["_id"] == "initial_wargame":
+            messages = messages[:-1]  # remove the initial war game definition message
+        return messages
 
     def _update_game_turn(self, messages: list[dict]):
         # Sync the game's turn number and phase with the last InfoMessage received

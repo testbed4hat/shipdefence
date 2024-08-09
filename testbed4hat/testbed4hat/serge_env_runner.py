@@ -212,6 +212,7 @@ class SergeEnvRunner:
         self.ship_2_channel_id = None
         self.ship_1_serge_name = "Alpha"
         self.ship_2_serge_name = "Bravo"
+        self.last_adjudication_msg_id: str | None = None
 
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
@@ -488,40 +489,6 @@ class SergeEnvRunner:
         # 5. Generate and send new WA messages from AI
         self._send_suggested_actions()
 
-    def _poll_serge_messages(self) -> None:
-        """
-        Polls the Serge server for messages and processes them
-        """
-
-        # Read all new messages from the server
-        new_messages = self.serge_game.get_new_messages()
-
-        # Process all new messages
-        while len(new_messages) > 0:
-            message = new_messages.pop(0)
-            message_type = message["messageType"]
-
-            # Process one message at a time
-            if message_type == "CustomMessage":
-                # Process custom messages (Chat, WA)
-                self._process_custom_message(message)
-            elif message_type == "InfoMessage":
-                msg_turn_number = message["gameTurn"]
-                # What if the game has moved several turns ahead? This is unlikely to happen, but we should have
-                #  a guard against this.
-                if msg_turn_number != self.turn and msg_turn_number - self.turn > 1:
-                    raise ValueError("Serge/Sim out of sync! Serge game turn is ahead of sim turn by more than one!")
-
-                if message["phase"] == "adjudication" and msg_turn_number not in self.turns_processed:
-                    # only process turn once when we're in the adjudication phase
-                    self._process_adjudication_phase()
-                    self.turns_processed.add(self.turn)
-            elif message_type == "MappingMessage":
-                # ignoring mapping messages
-                pass
-            else:  # skipping all other message types
-                warn(f"Unexpected message type received! Type: {message_type}")
-
     def _read_serge_game_settings(self):
         game_message = self.serge_game.get_wargame_last()
         game_data = game_message["data"]
@@ -533,6 +500,59 @@ class SergeEnvRunner:
                 if channel["name"] == self.ship_2_serge_name:
                     self.ship_2_channel_id = channel["uniqid"]
 
+    def _wait_until_next_adjudication_phase(self) -> str:
+        while True:
+            # Retrieve new messages from the server
+            new_messages = self.serge_game.get_new_messages()
+
+            # looking for an InfoMessage with phase == "adjudication"
+            for message in new_messages:
+                if message["messageType"] == "InfoMessage" and message["phase"] == "adjudication":
+                    return message["_id"]  # return the message ID to mark where this turn ends
+
+            # Wait for a few seconds before checking for new messages again
+            time.sleep(self.WAIT_TIME_BETWEEN_POLLS)
+
+    def _process_messages_in_the_last_turn(self, adjudication_msg_id: str) -> str | None:
+        # Retrieved messages afresh from Serge since the last turn
+        new_messages = self.serge_game.get_messages(since_msg_id=self.last_adjudication_msg_id)
+
+        while new_messages:
+            # Process one message at a time
+            message = new_messages.pop(0)
+            message_type = message["messageType"]
+            if message_type == "CustomMessage":
+                # Process custom messages (Chat, WA)
+                self._process_custom_message(message)
+            elif message_type == "InfoMessage":
+                msg_id = message["_id"]
+                msg_turn_number = message["gameTurn"]
+                if message["phase"] == "adjudication":
+                    if msg_id == self.last_adjudication_msg_id:
+                        continue  # skip the last adjudication message, we've already processed it
+
+                    # process the adjudication phase
+                    self.last_adjudication_msg_id = msg_id  # remember where we are
+                    if msg_turn_number not in self.turns_processed:
+                        self._process_adjudication_phase()
+                        self.turns_processed.add(self.turn)
+                    # we've done with this turn, stop processing any more messages
+                    break
+            elif message_type == "MappingMessage":
+                # ignoring mapping messages
+                continue
+            else:  # skipping all other message types
+                warn(f"Unexpected message type received! Type: {message_type}")
+
+        # if there are still more messages that haven't been processed, look out for a new adjudication phase
+        adjudication_messages = filter(
+            lambda m: m["messageType"] == "InfoMessage" and m["phase"] == "adjudication", new_messages
+        )
+        try:
+            return next(adjudication_messages)["_id"]  # we will process until this adjudication message the next time
+        except StopIteration:
+            return None
+
     def run(self):
         self.env = HatEnv(self.env_config)
         running = True
@@ -543,14 +563,14 @@ class SergeEnvRunner:
         self._update_serge_state_of_the_world()
 
         while running:
-            self._poll_serge_messages()
+            adjudication_msg_id = self._wait_until_next_adjudication_phase()
+            while adjudication_msg_id:
+                # more than one turn may have passed, we keep processing until seeing no more adjudication messages
+                adjudication_msg_id = self._process_messages_in_the_last_turn(adjudication_msg_id)
 
             if self.terminated or self.truncated:
                 running = False
                 self.serge_game.send_chat_message("Simulation terminated.")
-
-            # Wait for a few seconds before checking for new messages
-            time.sleep(self.WAIT_TIME_BETWEEN_POLLS)
 
 
 if __name__ == "__main__":
