@@ -245,6 +245,10 @@ class SergeEnvRunner:
         return ship_number, weapon_type, threat_id
 
     def _process_action_msg(self, message) -> None:
+        # Only action on a "Released" WA message
+        if message["details"]["collaboration"]["status"] != "Released":
+            return
+
         action = self._convert_wa_message_to_action(message)
 
         # We will action messages on a rolling basis, so just add it to the list of actions to send to the env, until
