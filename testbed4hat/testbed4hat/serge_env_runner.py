@@ -502,15 +502,6 @@ class SergeEnvRunner:
                 # Process custom messages (Chat, WA)
                 self._process_custom_message(message)
             elif message_type == "InfoMessage":
-                # get the ship channel Unique IDs from Serge, if we don't already have them (for WA messages)
-                if (self.ship_1_channel_id is None or self.ship_2_channel_id is None) and "data" in message:
-                    if "channels" in message["data"] and "channels" in message["data"]["channels"]:
-                        for channel in message["data"]["channels"]["channels"]:
-                            if channel["name"] == self.ship_1_serge_name:
-                                self.ship_1_channel_id = channel["uniqid"]
-                            if channel["name"] == self.ship_2_serge_name:
-                                self.ship_2_channel_id = channel["uniqid"]
-
                 msg_turn_number = message["gameTurn"]
                 # What if the game has moved several turns ahead? This is unlikely to happen, but we should have
                 #  a guard against this.
@@ -527,12 +518,24 @@ class SergeEnvRunner:
             else:  # skipping all other message types
                 warn(f"Unexpected message type received! Type: {message_type}")
 
+    def _read_serge_game_settings(self):
+        game_message = self.serge_game.get_wargame_last()
+        game_data = game_message["data"]
+        # find out the channels for the ships (for WA messages)
+        if "channels" in game_data and "channels" in game_data["channels"]:
+            for channel in game_data["channels"]["channels"]:
+                if channel["name"] == self.ship_1_serge_name:
+                    self.ship_1_channel_id = channel["uniqid"]
+                if channel["name"] == self.ship_2_serge_name:
+                    self.ship_2_channel_id = channel["uniqid"]
+
     def run(self):
         self.env = HatEnv(self.env_config)
         running = True
 
         # initialize a new game
         self._reset_env()
+        self._read_serge_game_settings()
         self._update_serge_state_of_the_world()
 
         while running:

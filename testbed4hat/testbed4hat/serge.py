@@ -75,11 +75,12 @@ class SergeGame:
             print(f"Request to {self.api_endpoint} failed: {e}")
             return None
 
-    def get_wargame_last(self) -> list[dict] | None:
+    def get_wargame_last(self) -> dict | None:
         try:
             response = requests.get(f"{self.api_endpoint}/last", timeout=5)
             response.raise_for_status()
-            return response.json()["data"]
+            messages = response.json()["data"]
+            return messages[0]  # there should only be once message in the returned list
         except requests.exceptions.RequestException as e:
             print(f"Request to {self.api_endpoint} failed: {e}")
             return None
