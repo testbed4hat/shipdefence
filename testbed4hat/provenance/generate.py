@@ -522,19 +522,18 @@ class ShipDefenceWorld:
         role: Role = self.roles.get(sender.get("roleId"), None)
         timestamp = datetime.fromisoformat(details.get("timestamp"))
         # TODO check isOpen and hasBeenRead properties
+        message = Message(
+            timestamp.timestamp(),  # message: using the UNIX timestamp number as the message id
+            channel,
+            role,
+            msg.message.content,
+            convert_to_type(msg.templateId),
+            details.get("privateMessage", None),
+            details.get("turnNumber"),
+            timestamp,
+        )
         # TODO: temporarily turning off the message recording - reinstate this later
-        # channel.send_message(
-        #     Message(
-        #         timestamp.timestamp(),  # message: using the UNIX timestamp number as the message id
-        #         channel,
-        #         role,
-        #         msg.message.content,
-        #         convert_to_type(msg.templateId),
-        #         details.get("privateMessage", None),
-        #         details.get("turnNumber"),
-        #         timestamp,
-        #     )
-        # )
+        # channel.send_message(message)
 
     def process_WA_message(self, msg):
         pass
