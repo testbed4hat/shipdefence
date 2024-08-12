@@ -308,17 +308,12 @@ MSG_WA = {  # a weapon assignment message
     "details": {
         "channel": "channel-wa-alpha",  # the channel corresponds to a ship
         "from": {
-            "force": "Taskforce",
-            "forceId": "f-taskforce",
-            "forceColor": "#3dd0ff",
-            "roleName": "AI Assistant",
-            "roleId": {
+                "force": "Taskforce",
                 "forceId": "f-taskforce",
-                "forceName": "Taskforce",
-                "roleId": "ai-assistant",
+                "forceColor": "#3dd0ff",
                 "roleName": "AI Assistant",
-            },
-            "iconURL": "http://localhost:8080/default_img/forceDefault.png",
+                "roleId": "ai-assistant",
+                "iconURL": "http://localhost:8080/default_img/forceDefault.png"
         },
         "timestamp": "2024-06-12T22:02:39.113Z",
         "turnNumber": 0,
