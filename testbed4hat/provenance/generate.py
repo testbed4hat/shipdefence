@@ -403,17 +403,22 @@ class Channel(MutableGameObject):
 
 
 class Message:
-    def __init__(
-        self, message_id: float, channel, sender, content: str, message_type, private_message, turn_number, timestamp
-    ):
-        self.message_id = message_id
+    def __init__(self, channel: Channel, sender: Role, metadata: dict, content: dict):
+        timestamp = datetime.fromisoformat(metadata.get("timestamp"))
+        self.message_id: float = timestamp.timestamp()  # using the UNIX timestamp number as the message id
         self.channel: Channel = channel
         self.sender: Role = sender
-        self.content: str = content
-        self.message_type: str = message_type
-        self.private_message = private_message
-        self.turn_number = turn_number
+        self.message_type: str | None = None
+        self.private_message = metadata.get("privateMessage", None)
+        self.turn_number = metadata.get("turnNumber")
         self.timestamp: datetime = timestamp
+
+
+class ChatMessage(Message):
+    def __init__(self, channel: Channel, sender: Role, metadata: dict, content: dict):
+        super().__init__(channel, sender, metadata, content)
+        self.message_type = "ChatMessage"
+        self.content: str = content.get("content")
 
 
 class ShipDefenceWorld:
@@ -520,18 +525,7 @@ class ShipDefenceWorld:
             logger.warning("Cannot found channel <%s>. Message will not be recorded.", channel_id)
             return
         role: Role = self.roles.get(sender.get("roleId"), None)
-        timestamp = datetime.fromisoformat(details.get("timestamp"))
-        # TODO check isOpen and hasBeenRead properties
-        message = Message(
-            timestamp.timestamp(),  # message: using the UNIX timestamp number as the message id
-            channel,
-            role,
-            msg.message.content,
-            convert_to_type(msg.templateId),
-            details.get("privateMessage", None),
-            details.get("turnNumber"),
-            timestamp,
-        )
+        message = ChatMessage(channel, role, details, msg.message)
         # TODO: temporarily turning off the message recording - reinstate this later
         # channel.send_message(message)
 
