@@ -158,6 +158,18 @@ MissileBinding = namedtuple(
         "target",
     ],
 )
+TargetSuggestionBinding = namedtuple(
+    "TargetSuggestionBinding",
+    [
+        "targeting_suggestion",
+        "sender",
+        "wa",
+        "wa_type",
+        "asset",
+        "target",
+        "weapon",
+    ],
+)
 ForceBinding = namedtuple(
     "ForceBinding",
     ["isA", "fserial", "force", "name"],
@@ -421,6 +433,17 @@ class ChatMessage(Message):
         self.content: str = content.get("content")
 
 
+class WAMessage(Message):
+    def __init__(self, channel: Channel, sender: Role, metadata: dict, content: dict):
+        super().__init__(channel, sender, metadata, content)
+        self.message_type = "WAMessage"
+        self.history = metadata.collaboration
+        # find the ship that received this targeting suggestion
+        self.asset_name = channel.name
+        self.target_id = content.Threat.ID
+        self.weapon = content.Weapon
+
+
 class ShipDefenceWorld:
     def __init__(self, game_id: str):
         self.game_id: str = game_id
@@ -619,7 +642,7 @@ class ShipDefenceWorld:
             # TODO: update any changes to the ship
             pass
 
-    def find_asset(self, name: str | None) -> Asset | None:
+    def find_asset_by_name(self, name: str | None) -> Asset | None:
         if name is None:
             return None
         for force in self.forces.values():
@@ -628,11 +651,20 @@ class ShipDefenceWorld:
                     return asset
         return None
 
+    def find_asset_by_id(self, asset_id: str | None) -> Asset | None:
+        if asset_id is None:
+            return None
+        for force in self.forces.values():
+            for asset in force.assets.values():
+                if asset.serial == asset_id:
+                    return asset
+        return None
+
     def update_missile(self, force: Force, missile_id: str, position, properties: dict):
         if missile_id not in force.assets:
             velocity = properties.get("Velocity", None)
             target_name = properties.get("Ship Targeted", None)
-            target = self.find_asset(target_name)
+            target = self.find_asset_by_name(target_name)
             missile = Missile(missile_id, properties["label"], "Missile", force, position, velocity, target)
             self.assets[missile.serial] = missile
             force.add_asset(missile)
@@ -660,7 +692,23 @@ class ShipDefenceWorld:
             self.update_missile(force, feature_id, f"{pos_lat},{pos_lon}", properties)
 
     def process_WA_message(self, msg):
-        pass
+        # Generate bindings for the various steps in the message's lifecyle
+        # 1. Targetting suggesting
+        asset = self.find_asset_by_name(msg.asset_name)
+        target = self.find_asset_by_id(msg.target_id)
+
+        self.record_bindings(
+            TargetSuggestionBinding(
+                "targeting_suggestion",  # targeting_suggestion
+                msg.sender.curr_version_id,  # sender
+                msg.message_id,  # wa
+                "AISuggestion" if msg.sender.serial == "ai-assistant" else "ManualAssignment",  # wa_type
+                asset.curr_version_id,  # asset
+                target.curr_version_id,  # target
+                msg.weapon,  # weapon
+            )
+        )
+        # 2. Amendments
 
     def process_custom_message(self, msg: dict):
         details: dict = msg.get("details")
@@ -681,7 +729,8 @@ class ShipDefenceWorld:
             # TODO: temporarily turning off the message recording - reinstate this later
             # channel.send_message(message)
         elif msg.templateId == "WA Message":
-            self.process_WA_message(msg)
+            wa_msg = WAMessage(channel, role, details, msg.message)
+            self.process_WA_message(wa_msg)
 
     def run(self):
         # load messages from the Serge server

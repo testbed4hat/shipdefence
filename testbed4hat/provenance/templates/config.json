@@ -85,6 +85,12 @@
       "template": "templates/missile.provn",
       "package": "org.openprovenance.prov4serge",
       "bindings": "templates/missile_bindings.json"
+    },
+    { "name": "targeting_suggestion",
+      "@type": "simple",
+      "template": "templates/targeting_suggestion.provn",
+      "package": "org.openprovenance.prov4serge",
+      "bindings": "templates/targeting_suggestion_bindings.json"
     }
   ]
 }
