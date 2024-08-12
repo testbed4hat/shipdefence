@@ -222,9 +222,9 @@ class Role(MutableGameObject):
 
 
 class Asset(MutableGameObject):
-    def __init__(self, asset_id, contact_id, name, platform_type, force, position):
+    def __init__(self, asset_id, name, platform_type, force, position):
         super().__init__(asset_id)
-        self.contact_id: str = contact_id
+        self.contact_id: str | None = None
         self.name: str = name
         self.platform_type: str = platform_type
         self.force: Force = force
@@ -464,7 +464,7 @@ class ShipDefenceWorld:
         platform_type = (
             "Destroyer" if asset_id.startswith("ship-") else "Weapon" if asset_id.startswith("weapon_") else "Threat"
         )
-        asset = Asset(asset_id, None, asset_data["label"], platform_type, force, position)
+        asset = Asset(asset_id, asset_data["label"], platform_type, force, position)
         self.assets[asset.serial] = asset
         force.add_asset(asset)
         self.record_bindings(asset.bindings)
