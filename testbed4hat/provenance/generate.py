@@ -516,22 +516,6 @@ class ShipDefenceWorld:
         self.phase = phase
         self.adjudication_start_timestamp = self.timestamp if phase == "adjudication" else None
 
-    def process_chat_message(self, msg):
-        details: dict = msg.get("details")
-        sender: dict = details.get("from")
-        channel_id = details.get("channel")
-        channel: Channel = self.channels.get(channel_id)
-        if channel is None:
-            logger.warning("Cannot found channel <%s>. Message will not be recorded.", channel_id)
-            return
-        role: Role = self.roles.get(sender.get("roleId"), None)
-        message = ChatMessage(channel, role, details, msg.message)
-        # TODO: temporarily turning off the message recording - reinstate this later
-        # channel.send_message(message)
-
-    def process_WA_message(self, msg):
-        pass
-
     def end_turn_update(self, doc):
         details: dict = doc.get("details")
         sender: dict = details.get("from")
@@ -675,9 +659,27 @@ class ShipDefenceWorld:
         else:
             self.update_missile(force, feature_id, f"{pos_lat},{pos_lon}", properties)
 
+    def process_WA_message(self, msg):
+        pass
+
     def process_custom_message(self, msg: dict):
+        details: dict = msg.get("details")
+        sender: dict = details.get("from")
+        channel_id = details.get("channel")
+        channel: Channel = self.channels.get(channel_id)
+        if channel is None:
+            logger.warning("Cannot found channel <%s>. Message will not be recorded.", channel_id)
+            return
+        role_id = sender.get("roleId")
+        # TODO: Hack for legacy malformed WA messages due to the wrong template (which have already been fixed)
+        if "roleId" in role_id:
+            role_id = role_id.get("roleId")
+        role: Role = self.roles.get(role_id, None)
+
         if msg.templateId == "chat":
-            self.process_chat_message(msg)
+            message = ChatMessage(channel, role, details, msg.message)
+            # TODO: temporarily turning off the message recording - reinstate this later
+            # channel.send_message(message)
         elif msg.templateId == "WA Message":
             self.process_WA_message(msg)
 
