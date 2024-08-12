@@ -20,7 +20,7 @@ OUTPUTS:=outputs
 %.png: %.json
 	$(PYPROVCONVERT) -f png $< $@
 
-.PHONY: compile-templates provenance
+.PHONY: compile-templates
 
 compile-templates:
 	$(PROVCONVERT) -templatebuilder templates/config.json
@@ -32,8 +32,8 @@ $(OUTPUTS)/generated/bin/prov4serge: compile-templates
 $(OUTPUTS)/provenance:
 	mkdir -p $@
 
-$(OUTPUTS)/provenance/wargame-lzind2c4.provn: $(OUTPUTS)/provenance $(OUTPUTS)/generated/bin/prov4serge csv/wargame-lzind2c4.csv
-	$(OUTPUTS)/generated/bin/prov4serge -i csv/wargame-lzind2c4.csv -o $@
+$(OUTPUTS)/provenance/wargame-lzmw0g5t.provn: $(OUTPUTS)/provenance $(OUTPUTS)/generated/bin/prov4serge csv/wargame-lzmw0g5t.csv
+	$(OUTPUTS)/generated/bin/prov4serge -i csv/wargame-lzmw0g5t.csv -o $@
 
 
-provenance: $(OUTPUTS)/provenance/wargame-lzind2c4.provn $(OUTPUTS)/provenance/wargame-lzind2c4.json $(OUTPUTS)/provenance/wargame-lzind2c4.pdf
+provenance: $(OUTPUTS)/provenance/wargame-lzmw0g5t.provn $(OUTPUTS)/provenance/wargame-lzmw0g5t.json $(OUTPUTS)/provenance/wargame-lzmw0g5t.pdf

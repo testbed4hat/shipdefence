@@ -79,6 +79,12 @@
       "template": "templates/channel.provn",
       "package": "org.openprovenance.prov4serge",
       "bindings": "templates/channel_bindings.json"
+    },
+    { "name": "missile",
+      "@type": "simple",
+      "template": "templates/missile.provn",
+      "package": "org.openprovenance.prov4serge",
+      "bindings": "templates/missile_bindings.json"
     }
   ]
 }

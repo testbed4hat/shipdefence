@@ -142,6 +142,22 @@ AssetBinding = namedtuple(
         "position",
     ],
 )
+MissileBinding = namedtuple(
+    "MissileBinding",
+    [
+        "isA",
+        "mserial",
+        "missile",
+        "missile_type",
+        "fserial",
+        "force",
+        "force_name",
+        "name",
+        "position",
+        "velocity",
+        "target",
+    ],
+)
 ForceBinding = namedtuple(
     "ForceBinding",
     ["isA", "fserial", "force", "name"],
@@ -254,6 +270,30 @@ class Asset(MutableGameObject):
         self.position = position
         self.state = state
         self.speed = speed
+
+
+class Missile(Asset):
+    def __init__(self, asset_id, name, missile_type, force, position, velocity, target):
+        # threat, threat_type, fserial, force, force_name, name, position, velocity, target
+        super().__init__(asset_id, name, missile_type, force, position)
+        self.speed = velocity
+        self.target: Asset | None = target
+
+    @property
+    def bindings(self) -> MissileBinding:
+        return MissileBinding(
+            "missile",
+            self.serial,  # mserial
+            self.curr_version_id,  # missile
+            self.platform_type,  # missile_type
+            self.force.serial,  # fserial
+            self.force.curr_version_id,  # force
+            self.force.name,  # force_name
+            self.name,
+            self.position,
+            self.speed,
+            self.target.serial if self.target is not None else None,  # target
+        )
 
 
 class Force(MutableGameObject):
@@ -459,16 +499,6 @@ class ShipDefenceWorld:
         force.add_role(role)
         self.record_bindings(role.bindings)
 
-    def add_asset(self, force, asset_id, position, asset_data):
-        # Ship Defence scenario specific
-        platform_type = (
-            "Destroyer" if asset_id.startswith("ship-") else "Weapon" if asset_id.startswith("weapon_") else "Threat"
-        )
-        asset = Asset(asset_id, asset_data["label"], platform_type, force, position)
-        self.assets[asset.serial] = asset
-        force.add_asset(asset)
-        self.record_bindings(asset.bindings)
-
     def new_turn(self, turn_number: int):
         logger.info("[New Turn: %d] – Started at %s", turn_number, self.timestamp)
         self.turn_numer = turn_number
@@ -602,6 +632,38 @@ class ShipDefenceWorld:
         for feature in features:
             self.update_feature(feature)
 
+    def update_ship(self, force: Force, ship_id: str, position, properties: dict):
+        if ship_id not in force.assets:
+            ship = Asset(ship_id, properties["label"], "Destroyer", force, position)
+            self.assets[ship.serial] = ship
+            force.add_asset(ship)
+            self.record_bindings(ship.bindings)
+        else:
+            # TODO: update any changes to the ship
+            pass
+
+    def find_asset(self, name: str | None) -> Asset | None:
+        if name is None:
+            return None
+        for force in self.forces.values():
+            for asset in force.assets.values():
+                if asset.name == name:
+                    return asset
+        return None
+
+    def update_missile(self, force: Force, missile_id: str, position, properties: dict):
+        if missile_id not in force.assets:
+            velocity = properties.get("Velocity", None)
+            target_name = properties.get("Ship Targeted", None)
+            target = self.find_asset(target_name)
+            missile = Missile(missile_id, properties["label"], "Missile", force, position, velocity, target)
+            self.assets[missile.serial] = missile
+            force.add_asset(missile)
+            self.record_bindings(missile.bindings)
+        else:
+            # TODO: update any changes to the missile
+            pass
+
     def update_feature(self, feature):
         # only process "Point" features
         if feature.geometry.type != "Point":
@@ -615,9 +677,10 @@ class ShipDefenceWorld:
         force_id: str = properties.pop("force")
         feature_id: str = properties.pop("id")
         force = self.forces.get(force_id)
-        if feature_id not in force.assets:
-            # create the asset
-            self.add_asset(force, feature_id, (pos_lat, pos_lon), properties)
+        if feature_id.startswith("ship-"):
+            self.update_ship(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+        else:
+            self.update_missile(force, feature_id, f"{pos_lat},{pos_lon}", properties)
 
     def process_custom_message(self, msg: dict):
         if msg.templateId == "chat":
@@ -686,7 +749,7 @@ if __name__ == "__main__":
     csv_folder = Path("provenance/csv")
     target_folder = Path("provenance/outputs")
 
-    game_id = "wargame-lzind2c4"
+    game_id = "wargame-lzmw0g5t"
     log_file_handler = logging.FileHandler(target_folder / f"{game_id}.log")
     logger.addHandler(log_file_handler)
 
