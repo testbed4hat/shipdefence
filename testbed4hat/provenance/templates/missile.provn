@@ -1,0 +1,34 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:mserial,
+      [ prov:type='serge:Missle',
+        prov:type='var:missile_type',
+        prov:type='var:force_name',  // force name
+        serge:name='var:name'   // missile name
+      ]
+    )
+
+    entity(var:missile,
+      [ prov:type='serge:Missle',
+        prov:type='var:missile_type',
+        serge:name='var:name',   // missile name
+        serge:position='var:position',
+        serge:velocity='var:velocity',
+        serge:target='var:target'
+      ]
+    )
+    specializationOf(var:missile, var:mserial)
+
+    entity(var:fserial)
+    hadMember(var:fserial, var:mserial)
+    entity(var:force)
+    hadMember(var:force, var:missile)
+
+  endBundle
+endDocument
