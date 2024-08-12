@@ -614,9 +614,6 @@ class ShipDefenceWorld:
             return
         force_id: str = properties.pop("force")
         feature_id: str = properties.pop("id")
-        # TODO Hack to be removed: assign force ID to threats
-        if not feature_id.startswith("ship-") and not feature_id.startswith("weapon_"):
-            force_id = "f-militia"
         force = self.forces.get(force_id)
         if feature_id not in force.assets:
             # create the asset
