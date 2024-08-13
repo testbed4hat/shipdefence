@@ -7,7 +7,7 @@ document
     prefix serge <http://openprovenance.org/ns/serge#>
 
     entity(var:mserial,
-      [ prov:type='serge:Missle',
+      [ prov:type='serge:Missile',
         prov:type='var:missile_type',
         prov:type='var:force_name',  // force name
         serge:name='var:name'   // missile name
@@ -15,7 +15,7 @@ document
     )
 
     entity(var:missile,
-      [ prov:type='serge:Missle',
+      [ prov:type='serge:Missile',
         prov:type='var:missile_type',
         serge:name='var:name',   // missile name
         serge:position='var:position',
