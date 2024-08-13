@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Tuple
 from warnings import warn
 
+import numpy as np
 import pyproj
 from pyproj import CRS, Transformer
 from shapely.geometry import Point
@@ -170,8 +171,8 @@ class SergeEnvRunner:
         config.set_parameter("num_ship_2_weapon_0", 10)
         config.set_parameter("num_ship_2_weapon_1", 10)
         # note that the only difference between threats in the sim is their speed and displayed size
-        threat_0_speed = 450.0 * 1000 / 3600  # 450 Km/hr -> m/s
-        threat_1_speed = 500.0 * 1000 / 3600  # 500 Km/hr -> m/s
+        threat_0_speed = 500.0 * 1000 / 3600  # 500 Km/hr -> m/s
+        threat_1_speed = 550.0 * 1000 / 3600  # 550 Km/hr -> m/s
         config.set_parameter("threat_0_speed", threat_0_speed)
         config.set_parameter("threat_1_speed", threat_1_speed)
 
@@ -202,7 +203,7 @@ class SergeEnvRunner:
         self.turn_actions = None
         self.ship_features = None
         self.heuristic_agent = None
-        self.turns_processed: set[int] = {0}
+        self.turns_processed = None
 
         # serge setup vars
         self.game_id = game_id
@@ -230,7 +231,7 @@ class SergeEnvRunner:
 
     @staticmethod
     def _sim_threat_id_to_serge_id(threat_id: str) -> str:
-        return threat_id[len("threat_") :]
+        return threat_id[len("threat_"):]
 
     @staticmethod
     def _serge_threat_id_to_sim_id(threat_id: str) -> str:
@@ -240,9 +241,9 @@ class SergeEnvRunner:
         # # WA message
         # Tuple is (ship_number: int, weapon_type: int, threat_id: str)
         assert wa_message["details"]["channel"] in [self.ship_1_channel_id, self.ship_2_channel_id]  # must be set!
-        ship_number = 0 if wa_message["details"]["channel"] == self.ship_1_channel_id else 1  # todo: verify!
-        weapon_type = self.WEAPON_STR_TO_INT[wa_message["message"]["Weapon"]]  # todo: verify!
-        threat_id = self._serge_threat_id_to_sim_id(wa_message["message"]["Threat"]["ID"])  # todo: verify!
+        ship_number = 0 if wa_message["details"]["channel"] == self.ship_1_channel_id else 1
+        weapon_type = self.WEAPON_STR_TO_INT[wa_message["message"]["Weapon"]]
+        threat_id = self._serge_threat_id_to_sim_id(wa_message["message"]["Threat"]["ID"])
         return ship_number, weapon_type, threat_id
 
     def _process_action_msg(self, message) -> None:
@@ -294,7 +295,8 @@ class SergeEnvRunner:
         assert target_ship in [1, 2]  # ship IDs are 1 indexed
         ship_targeted = self.ship_1_serge_name if target_ship == 1 else self.ship_2_serge_name
         WA_MSG["message"]["Threat"]["Ship Targeted"] = ship_targeted
-        WA_MSG["message"]["Threat"]["Velocity"] = str([float(v) for v in threat_info["velocity"]])
+        speed = np.linalg.norm(threat_info["velocity"])
+        WA_MSG['message']["Threat"]["Velocity"] = str(speed)
         WA_MSG["message"]["Title"] = "Suggested WA"
         WA_MSG["message"]["Weapon"] = self.WEAPON_INT_TO_STR[weapon_type]
         return WA_MSG
@@ -324,7 +326,9 @@ class SergeEnvRunner:
         threat_dict["properties"]["Short Range PK"] = str(float(threat["weapon_1_kill_probability"]))
         threat_dict["properties"]["Weapons Assigned"] = threat["weapons_assigned"]
         threat_dict["properties"]["Weapons Assigned PK"] = str([float(t) for t in threat["weapons_assigned_p_kill"]])
-        threat_dict["properties"]["Velocity"] = str([float(t) for t in threat["velocity"]])
+
+        speed = np.linalg.norm(threat["velocity"])
+        threat_dict["properties"]["Velocity"] = str(speed)
         # want weapon assigned type?
         return threat_dict
 
@@ -429,10 +433,10 @@ class SergeEnvRunner:
         ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
         ship_2_weapon_0_inventory = self.obs["ship_2"]["inventory"]["weapon_0_inventory"]
         ship_2_weapon_1_inventory = self.obs["ship_2"]["inventory"]["weapon_1_inventory"]
-        ship_features[0]["properties"]["weapon_0_inventory"] = ship_1_weapon_0_inventory
-        ship_features[0]["properties"]["weapon_1_inventory"] = ship_1_weapon_1_inventory
-        ship_features[1]["properties"]["weapon_0_inventory"] = ship_2_weapon_0_inventory
-        ship_features[1]["properties"]["weapon_1_inventory"] = ship_2_weapon_1_inventory
+        ship_features[0]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
+        ship_features[0]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
+        ship_features[1]["properties"]["Long Range ammo"] = ship_2_weapon_0_inventory
+        ship_features[1]["properties"]["Short Range ammo"] = ship_2_weapon_1_inventory
 
         step_message["featureCollection"]["features"] = ship_features + threats + weapons
 
@@ -574,7 +578,6 @@ class SergeEnvRunner:
 
 
 if __name__ == "__main__":
-    # game_id = "wargame-lxcd9mgw"
-    game_id = "wargame-lzmmv1zh"
+    game_id = "wargame-lzsq7w1g"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
