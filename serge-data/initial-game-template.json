@@ -1,7 +1,7 @@
 {
   "_id": "initial_wargame",
-  "_rev": "6-9fcc84a92a7a88ae327d0e267234631b",
-  "wargameTitle": "Testbed4HAT-template",
+  "_rev": "10-bf43a2a35c2d76de062a4d8bb6ca66ba",
+  "wargameTitle": "Testbed4HAT-template-v2",
   "name": "_#_wargame-lxcbtfnz",
   "data": {
     "overview": {
@@ -13,7 +13,7 @@
       },
       "realtimeTurnTime": 120000,
       "timeWarning": 60000,
-      "gameDate": 1718287200000,
+      "gameDate": 1723541400000,
       "showAccessCodes": true,
       "logPlayerActivity": true,
       "dirty": false
@@ -25,7 +25,15 @@
           "name": "Militia",
           "uniqid": "f-militia",
           "overview": "An overview written here..",
-          "roles": [{"name": "CO","roleId": "co-militia","isGameControl": false,"isObserver": false,"isInsightViewer": false}],
+          "roles": [
+            {
+              "name": "CO",
+              "roleId": "co-militia",
+              "isGameControl": false,
+              "isObserver": false,
+              "isInsightViewer": false
+            }
+          ],
           "iconURL": "http://localhost:8080/default_img/forceDefault.png",
           "color": "#d0021b",
           "umpire": false,
@@ -69,7 +77,15 @@
           "name": "White",
           "uniqid": "umpire",
           "overview": "Umpire force.",
-          "roles": [{"name": "Game Control","roleId": "umpire","isGameControl": true,"isObserver": true,"isInsightViewer": true}],
+          "roles": [
+            {
+              "name": "Game Control",
+              "roleId": "umpire",
+              "isGameControl": true,
+              "isObserver": true,
+              "isInsightViewer": true
+            }
+          ],
           "iconURL": "http://localhost:8080/default_img/umpireDefault.png",
           "color": "#FCFBEE",
           "umpire": true,
@@ -80,7 +96,15 @@
         "name": "White",
         "uniqid": "umpire",
         "overview": "Umpire force.",
-        "roles": [{"name": "Game Control","roleId": "umpire","isGameControl": true,"isObserver": true,"isInsightViewer": true}],
+        "roles": [
+          {
+            "name": "Game Control",
+            "roleId": "umpire",
+            "isGameControl": true,
+            "isObserver": true,
+            "isInsightViewer": true
+          }
+        ],
         "iconURL": "http://localhost:8080/default_img/umpireDefault.png",
         "color": "#FCFBEE",
         "umpire": true,
@@ -113,7 +137,9 @@
         },
         {
           "additonalData": [],
-          "approveVerbs": ["Approve"],
+          "approveVerbs": [
+            "Approve"
+          ],
           "channelType": "ChannelCollab",
           "extraColumns": [],
           "initialState": "PENDING_REVIEW",
@@ -126,7 +152,9 @@
             {
               "force": "",
               "forceUniqid": "f-taskforce",
-              "roles": ["ai-assistant"],
+              "roles": [
+                "ai-assistant"
+              ],
               "subscriptionId": "lx32n7ou",
               "canCreate": true,
               "viewUnreleasedVersions": false,
@@ -136,7 +164,9 @@
             {
               "force": "",
               "forceUniqid": "f-taskforce",
-              "roles": ["co-alpha"],
+              "roles": [
+                "co-alpha"
+              ],
               "subscriptionId": "lx32huqd",
               "canCreate": true,
               "viewUnreleasedVersions": true,
@@ -144,13 +174,19 @@
               "pType": "ParticipantCollab"
             }
           ],
-          "releaseVerbs": ["Release"],
-          "requestChangesVerbs": ["Request Changes"],
+          "releaseVerbs": [
+            "Release"
+          ],
+          "requestChangesVerbs": [
+            "Request Changes"
+          ],
           "uniqid": "channel-wa-alpha"
         },
         {
           "additonalData": [],
-          "approveVerbs": ["Approve"],
+          "approveVerbs": [
+            "Approve"
+          ],
           "channelType": "ChannelCollab",
           "extraColumns": [],
           "initialState": "PENDING_REVIEW",
@@ -163,7 +199,9 @@
             {
               "force": "",
               "forceUniqid": "f-taskforce",
-              "roles": ["ai-assistant"],
+              "roles": [
+                "ai-assistant"
+              ],
               "subscriptionId": "lx32n7ou",
               "canCreate": true,
               "viewUnreleasedVersions": false,
@@ -173,7 +211,9 @@
             {
               "force": "",
               "forceUniqid": "f-taskforce",
-              "roles": ["co-bravo"],
+              "roles": [
+                "co-bravo"
+              ],
               "subscriptionId": "lx32nz5j",
               "canCreate": true,
               "viewUnreleasedVersions": true,
@@ -181,16 +221,26 @@
               "pType": "ParticipantCollab"
             }
           ],
-          "releaseVerbs": ["Release"],
-          "requestChangesVerbs": ["Request Changes"],
+          "releaseVerbs": [
+            "Release"
+          ],
+          "requestChangesVerbs": [
+            "Request Changes"
+          ],
           "uniqid": "channel-wa-bravo"
         },
         {
           "channelType": "ChannelMapping",
           "constraints": {
             "bounds": [
-              [12.2,42.7],
-              [13.4,43.9]
+              [
+                12.2,
+                42.7
+              ],
+              [
+                13.4,
+                43.9
+              ]
             ],
             "minZoom": 3,
             "tileLayer": {
@@ -202,39 +252,84 @@
           "name": "Map",
           "participants": [
             {
-              "forRenderer": ["core","milSym"],
+              "forRenderer": [
+                "core",
+                "milSym"
+              ],
               "forceUniqid": "f-taskforce",
               "pType": "ParticipantMapping",
               "permissionTo": {
-                "f-taskforce": ["ViewSpatial","Move/resize","Edit own props"],
-                "f-militia": ["ViewSpatial"]
+                "f-taskforce": [
+                  "ViewSpatial",
+                  "Move/resize",
+                  "Edit own props"
+                ],
+                "f-militia": [
+                  "ViewSpatial"
+                ]
               },
-              "phases": ["planning"],
-              "roles": ["ai-assistant","co-alpha","co-bravo"],
+              "phases": [
+                "planning"
+              ],
+              "roles": [
+                "ai-assistant",
+                "co-alpha",
+                "co-bravo"
+              ],
               "subscriptionId": "bbbb"
             },
             {
-              "forRenderer": ["core","milSym"],
+              "forRenderer": [
+                "core",
+                "milSym"
+              ],
               "forceUniqid": "f-taskforce",
               "pType": "ParticipantMapping",
               "permissionTo": {
-                "f-taskforce": ["Exists","ViewProps","ViewSpatial"],
-                "f-militia": ["ViewProps","ViewSpatial"]
+                "f-taskforce": [
+                  "Exists",
+                  "ViewProps",
+                  "ViewSpatial"
+                ],
+                "f-militia": [
+                  "ViewProps",
+                  "ViewSpatial"
+                ]
               },
-              "phases": ["adjudication"],
+              "phases": [
+                "adjudication"
+              ],
               "roles": [],
               "subscriptionId": "bbbb"
             },
             {
-              "forRenderer": ["core","milSym"],
+              "forRenderer": [
+                "core",
+                "milSym"
+              ],
               "forceUniqid": "umpire",
               "pType": "ParticipantMapping",
               "permissionTo": {
-                "f-taskforce": ["Add/Remove","ViewProps","Edit all props","Move/resize","ViewSpatial"],
-                "f-militia": ["ViewSpatial","ViewProps","Add/Remove"]
+                "f-taskforce": [
+                  "Add/Remove",
+                  "ViewProps",
+                  "Edit all props",
+                  "Move/resize",
+                  "ViewSpatial"
+                ],
+                "f-militia": [
+                  "ViewSpatial",
+                  "ViewProps",
+                  "Add/Remove"
+                ]
               },
-              "phases": ["planning","adjudication"],
-              "roles": ["umpire"],
+              "phases": [
+                "planning",
+                "adjudication"
+              ],
+              "roles": [
+                "umpire"
+              ],
               "subscriptionId": "casa"
             }
           ],
@@ -242,7 +337,10 @@
             {
               "additionalProps": [
                 {
-                  "choices": ["Yes","No"],
+                  "choices": [
+                    "Yes",
+                    "No"
+                  ],
                   "description": "Whether this relates to an important operation or interaction",
                   "editable": true,
                   "id": "important",
@@ -252,14 +350,21 @@
               ],
               "baseProps": [
                 {
-                  "choices": ["f-militia","f-taskforce","umpire"],
+                  "choices": [
+                    "f-militia",
+                    "f-taskforce",
+                    "umpire"
+                  ],
                   "editable": false,
                   "id": "force",
                   "label": "Force",
                   "type": "EnumProperty"
                 },
                 {
-                  "choices": ["adjudication","planning"],
+                  "choices": [
+                    "adjudication",
+                    "planning"
+                  ],
                   "description": "The phase when this item was generated",
                   "editable": false,
                   "id": "phase",
@@ -281,14 +386,22 @@
             {
               "additionalProps": [
                 {
-                  "choices": ["Infrastructure","Military","Civilian"],
+                  "choices": [
+                    "Infrastructure",
+                    "Military",
+                    "Civilian"
+                  ],
                   "editable": false,
                   "id": "category",
                   "label": "Category",
                   "type": "EnumProperty"
                 },
                 {
-                  "choices": ["S","M","L"],
+                  "choices": [
+                    "S",
+                    "M",
+                    "L"
+                  ],
                   "editable": false,
                   "id": "size",
                   "label": "Size",
@@ -305,14 +418,20 @@
               ],
               "baseProps": [
                 {
-                  "choices": ["f-militia","f-taskforce"],
+                  "choices": [
+                    "f-militia",
+                    "f-taskforce"
+                  ],
                   "editable": false,
                   "id": "force",
                   "label": "Force",
                   "type": "EnumProperty"
                 },
                 {
-                  "choices": ["adjudication","planning"],
+                  "choices": [
+                    "adjudication",
+                    "planning"
+                  ],
                   "description": "The phase when this item was generated",
                   "editable": false,
                   "id": "phase",
@@ -337,7 +456,9 @@
       ],
       "selectedChannel": {
         "additonalData": [],
-        "approveVerbs": ["Approve"],
+        "approveVerbs": [
+          "Approve"
+        ],
         "channelType": "ChannelCollab",
         "extraColumns": [],
         "initialState": "PENDING_REVIEW",
@@ -350,7 +471,9 @@
           {
             "force": "",
             "forceUniqid": "f-taskforce",
-            "roles": ["ai-assistant"],
+            "roles": [
+              "ai-assistant"
+            ],
             "subscriptionId": "lx32n7ou",
             "canCreate": true,
             "viewUnreleasedVersions": false,
@@ -360,7 +483,9 @@
           {
             "force": "",
             "forceUniqid": "f-taskforce",
-            "roles": ["co-alpha"],
+            "roles": [
+              "co-alpha"
+            ],
             "subscriptionId": "lx32huqd",
             "canCreate": true,
             "viewUnreleasedVersions": true,
@@ -368,8 +493,12 @@
             "pType": "ParticipantCollab"
           }
         ],
-        "releaseVerbs": ["Release"],
-        "requestChangesVerbs": ["Request Changes"],
+        "releaseVerbs": [
+          "Release"
+        ],
+        "requestChangesVerbs": [
+          "Request Changes"
+        ],
         "uniqid": "channel-wa-bravo"
       },
       "dirty": false
@@ -401,7 +530,11 @@
               },
               "Status": {
                 "type": "string",
-                "enum": ["Minor","Major","Critical"]
+                "enum": [
+                  "Minor",
+                  "Major",
+                  "Critical"
+                ]
               },
               "Description": {
                 "type": "string",
@@ -432,14 +565,20 @@
                   },
                   "Lat Hemi": {
                     "type": "string",
-                    "enum": ["N","S"]
+                    "enum": [
+                      "N",
+                      "S"
+                    ]
                   },
                   "Long": {
                     "type": "number"
                   },
                   "Long Hemi": {
                     "type": "string",
-                    "enum": ["E","W"]
+                    "enum": [
+                      "E",
+                      "W"
+                    ]
                   }
                 },
                 "format": "grid"
@@ -622,7 +761,13 @@
                     "ActionOnContact": {
                       "title": "Action on Contact",
                       "type": "string",
-                      "enum": ["Ignore","Evade","Covert Trail","Overt Trail","Harass"]
+                      "enum": [
+                        "Ignore",
+                        "Evade",
+                        "Covert Trail",
+                        "Overt Trail",
+                        "Harass"
+                      ]
                     },
                     "AnyOtherComments": {
                       "title": "Any other comments",
@@ -639,7 +784,10 @@
               }
             },
             "title": "Daily Intent",
-            "required": ["OverallIntentions","Orders"]
+            "required": [
+              "OverallIntentions",
+              "Orders"
+            ]
           },
           "completed": false
         },
@@ -768,13 +916,18 @@
               }
             },
             "title": "State of World 2",
-            "required": ["TurnNumber","Summary","ForceDisposition","Narrative"]
+            "required": [
+              "TurnNumber",
+              "Summary",
+              "ForceDisposition",
+              "Narrative"
+            ]
           },
           "completed": false
         },
         {
           "_id": "WA Message",
-          "_rev": "2023-03-09T12:14:00.193Z",
+          "_rev": "2024-08-13T09:51:00.000Z",
           "completed": true,
           "details": {
             "format": "grid",
@@ -810,7 +963,11 @@
                     "type": "string"
                   },
                   "Ship Targeted": {
-                    "enum": ["Ship A","Ship B","None"],
+                    "enum": [
+                      "Alpha",
+                      "Bravo",
+                      "None"
+                    ],
                     "options": {
                       "grid_columns": 2
                     },
@@ -833,7 +990,11 @@
                 "type": "string"
               },
               "Weapon": {
-                "enum": ["Long Range","Short Range","None"],
+                "enum": [
+                  "Long Range",
+                  "Short Range",
+                  "None"
+                ],
                 "options": {
                   "grid_columns": 4
                 },
