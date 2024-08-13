@@ -3,6 +3,9 @@ import json
 import requests
 
 
+# Time to wait for a request to Serge to complete
+TIMEOUT = 15  # seconds
+
 class SergeGame:
     ID_CO_A = "co-alpha"
     ID_CO_B = "co-bravo"
@@ -63,25 +66,25 @@ class SergeGame:
 
     def _get_wargame(self) -> list[dict] | None:
         try:
-            response = requests.get(self.api_endpoint, timeout=5)
+            response = requests.get(self.api_endpoint, timeout=TIMEOUT)
             response.raise_for_status()
             return response.json()["data"]
         except requests.exceptions.RequestException as e:
             print(f"Request to {self.api_endpoint} failed: {e}")
-            return None
+            return []  # return an empty list if the request fails
 
     def _get_messages_since_id(self, last_id: str) -> list[dict] | None:
         try:
-            response = requests.get(f"{self.api_endpoint}/lastDoc/{last_id}", timeout=5)
+            response = requests.get(f"{self.api_endpoint}/lastDoc/{last_id}", timeout=TIMEOUT)
             response.raise_for_status()
             return response.json()["data"]
         except requests.exceptions.RequestException as e:
             print(f"Request to {self.api_endpoint} failed: {e}")
-            return None
+            return []  # return an empty list if the request fails
 
     def get_wargame_last(self) -> dict | None:
         try:
-            response = requests.get(f"{self.api_endpoint}/last", timeout=5)
+            response = requests.get(f"{self.api_endpoint}/last", timeout=TIMEOUT)
             response.raise_for_status()
             messages = response.json()["data"]
             return messages[0]  # there should only be once message in the returned list
