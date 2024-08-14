@@ -32,8 +32,8 @@ $(OUTPUTS)/generated/bin/prov4serge: compile-templates
 $(OUTPUTS)/provenance:
 	mkdir -p $@
 
-$(OUTPUTS)/provenance/wargame-lzmw0g5t.provn: $(OUTPUTS)/provenance $(OUTPUTS)/generated/bin/prov4serge csv/wargame-lzmw0g5t.csv
-	$(OUTPUTS)/generated/bin/prov4serge -i csv/wargame-lzmw0g5t.csv -o $@
+$(OUTPUTS)/provenance/wargame-lzmnr7lj.provn: $(OUTPUTS)/provenance $(OUTPUTS)/generated/bin/prov4serge csv/wargame-lzmnr7lj.csv
+	$(OUTPUTS)/generated/bin/prov4serge -i csv/wargame-lzmnr7lj.csv -o $@
 
 
-provenance: $(OUTPUTS)/provenance/wargame-lzmw0g5t.provn $(OUTPUTS)/provenance/wargame-lzmw0g5t.json $(OUTPUTS)/provenance/wargame-lzmw0g5t.pdf
+provenance: $(OUTPUTS)/provenance/wargame-lzmnr7lj.provn $(OUTPUTS)/provenance/wargame-lzmnr7lj.json $(OUTPUTS)/provenance/wargame-lzmnr7lj.pdf

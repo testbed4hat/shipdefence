@@ -91,6 +91,12 @@
       "template": "templates/targeting_suggestion.provn",
       "package": "org.openprovenance.prov4serge",
       "bindings": "templates/targeting_suggestion_bindings.json"
+    },
+    { "name": "targeting_amendment",
+      "@type": "simple",
+      "template": "templates/targeting_amendment.provn",
+      "package": "org.openprovenance.prov4serge",
+      "bindings": "templates/targeting_amendment_bindings.json"
     }
   ]
 }

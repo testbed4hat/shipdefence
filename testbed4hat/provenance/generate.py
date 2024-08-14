@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 import logging
 from pathlib import Path
+import re
 from typing import Iterable, Optional
 
 from munch import munchify
@@ -161,9 +162,22 @@ MissileBinding = namedtuple(
 TargetSuggestionBinding = namedtuple(
     "TargetSuggestionBinding",
     [
-        "targeting_suggestion",
+        "isA",
         "sender",
         "wa",
+        "wa_type",
+        "asset",
+        "target",
+        "weapon",
+    ],
+)
+TargetingAmendmentBinding = namedtuple(
+    "TargetingAmendmentBinding",
+    [
+        "isA",
+        "role",
+        "wa_0",
+        "wa_1",
         "wa_type",
         "asset",
         "target",
@@ -708,7 +722,32 @@ class ShipDefenceWorld:
                 msg.weapon,  # weapon
             )
         )
-        # 2. Amendments
+        # 2. Amendments if any
+        if "feedback" in msg.history:
+            previous_id = msg.message_id
+            p_action = re.compile(r"^\[(?P<action>\w+)\]")
+            for feedback in msg.history.feedback:
+                role = self.roles.get(feedback.fromId)
+                timestamp = datetime.fromisoformat(feedback.date)
+                current_id = timestamp.timestamp()
+                m_action = p_action.match(feedback.feedback)
+                wa_type = (
+                    m_action.group("action") + "WeaponAssignment"
+                    if m_action is not None
+                    else "UndeterminedWeaponAssignment"
+                )
+                self.record_bindings(
+                    TargetingAmendmentBinding(
+                        "targeting_amendment",  # isA
+                        role.curr_version_id,  # role
+                        previous_id,  # wa_0
+                        current_id,  # wa_1
+                        wa_type,  # wa_type
+                        asset.curr_version_id,  # asset
+                        target.curr_version_id,  # target
+                        msg.weapon,  # weapon
+                    )
+                )
 
     def process_custom_message(self, msg: dict):
         details: dict = msg.get("details")
@@ -793,7 +832,7 @@ if __name__ == "__main__":
     csv_folder = Path("provenance/csv")
     target_folder = Path("provenance/outputs")
 
-    game_id = "wargame-lzmw0g5t"
+    game_id = "wargame-lzmnr7lj"
     log_file_handler = logging.FileHandler(target_folder / f"{game_id}.log")
     logger.addHandler(log_file_handler)
 
