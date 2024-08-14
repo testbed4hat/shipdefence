@@ -67,12 +67,7 @@ SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
             "forceId": "f-taskforce",
             "forceColor": "#3dd0ff",
             "roleName": "AI Assistant",
-            "roleId": {
-                "forceId": "f-taskforce",
-                "forceName": "Taskforce",
-                "roleId": "ai-assistant",
-                "roleName": "AI Assistant",
-            },
+            "roleId": "ai-assistant",
             "iconURL": "http://localhost:8080/default_img/forceDefault.png",
         },
         "timestamp": "UNSPECIFIED",
