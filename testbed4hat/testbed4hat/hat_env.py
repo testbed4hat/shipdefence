@@ -58,8 +58,10 @@ class HatEnv(gym.Env):
 
         # The max number of each kind of weapon that can be launched per ship per turn. Used to warn users they are
         #   asking for too many weapon launches per turn, and to quite processing actions early, if needed.
-        self.max_weapons_per_turn = {"weapon_0": self.seconds_per_timestep // self.weapon_0_reload_time,
-                                     "weapon_1": self.seconds_per_timestep // self.weapon_1_reload_time}
+        self.max_weapons_per_turn = {
+            "weapon_0": self.seconds_per_timestep // self.weapon_0_reload_time,
+            "weapon_1": self.seconds_per_timestep // self.weapon_1_reload_time,
+        }
         # max actions per step are how many max weapons can be launched per turn for both boats. Used to warn users they
         #   are giving too many actions per turn, and to quite processing the actions list if it was too large
         self.max_actions_step = self.max_weapons_per_turn["weapon_0"] * 2 + self.max_weapons_per_turn["weapon_1"] * 2
@@ -171,8 +173,7 @@ class HatEnv(gym.Env):
         if isinstance(weapon, Weapon):
             self.weapons.append(weapon)
             self.weapon_counter += 1
-            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST",
-                                    weapon_id=weapon_id)
+            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST", weapon_id=weapon_id)
         else:
             return WeaponLaunchInfo(False, ship_id, threat_id, weapon_type, weapon)
 
@@ -327,7 +328,7 @@ class HatEnv(gym.Env):
             "weapons_assigned_type": weapons_assigned_type,
             "weapons_assigned_p_kill": weapons_assigned_p_kill,
             "estimated_time_of_arrival": estimated_time_to_arrival,
-            "target_ship": threat_target + 1  # add one to put ships back in 1-index
+            "target_ship": threat_target + 1,  # add one to put ships back in 1-index
         }
 
         return obs
@@ -339,23 +340,25 @@ class HatEnv(gym.Env):
         weapon_angle = ship.orientation - np.rad2deg(weapon_abs_angle)
         obs = {
             "weapon_id": weapon.weapon_id,
+            "weapon_type": weapon.weapon_type,
             "target_id": weapon.get_target_threat_id(),
             "time_left": weapon.get_current_timer(),
             "probability_of_kill": weapon.get_p_kill(),
             "distance": weapon_dist,
             "angle": weapon_angle,
-            "location": weapon.location
+            "location": weapon.location,
         }
         return obs
 
-    def _make_observation(self, launches: list[WeaponLaunchInfo],
-                          failures: dict[tuple[int, str, int], WeaponLaunchInfo]) -> dict:
+    def _make_observation(
+        self, launches: list[WeaponLaunchInfo], failures: dict[tuple[int, str, int], WeaponLaunchInfo]
+    ) -> dict:
         # get ship 1 observation
         ship_1_obs = {
             "location": self.ship_1.location,
             "threats": [self._threat_observation(0, threat) for threat_id, threat in self.threats.items()],
             "weapons": [self._weapon_observation(0, weapon) for weapon in self.weapons],
-            "inventory": self.ship_1.weapon_inventory()
+            "inventory": self.ship_1.weapon_inventory(),
         }
 
         # get ship 2 observation
@@ -363,7 +366,7 @@ class HatEnv(gym.Env):
             "location": self.ship_2.location,
             "threats": [self._threat_observation(1, threat) for threat_id, threat in self.threats.items()],
             "weapons": [self._weapon_observation(1, weapon) for weapon in self.weapons],
-            "inventory": self.ship_2.weapon_inventory()
+            "inventory": self.ship_2.weapon_inventory(),
         }
 
         # Aggregate action (weapon) information
@@ -372,14 +375,19 @@ class HatEnv(gym.Env):
 
         # Add any additional messages collected during the step
         messages = [m.to_string() for m in self.step_messages]
-        return {"ship_1": ship_1_obs, "ship_2": ship_2_obs, "launched": launched, "failed": failed,
-                "messages": messages}
+        return {
+            "ship_1": ship_1_obs,
+            "ship_2": ship_2_obs,
+            "launched": launched,
+            "failed": failed,
+            "messages": messages,
+        }
 
     def reset(
-            self,
-            *,
-            seed: int | None = None,
-            options: dict[str, Any] | None = None,
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
     ) -> tuple[ObsType, dict[str, Any]]:
 
         if seed is not None:
@@ -405,8 +413,9 @@ class HatEnv(gym.Env):
 
         # update the ships' locations to get a minimum distance, as long as both locations are not prescribed
         if self.hard_ship_1_location is None or self.hard_ship_2_location is None:
-            while not (self.min_distance_between_ships <= distance(ship_1_loc, ship_2_loc)
-                       <= self.max_distance_between_ships):
+            while not (
+                self.min_distance_between_ships <= distance(ship_1_loc, ship_2_loc) <= self.max_distance_between_ships
+            ):
                 if self.hard_ship_2_location is not None:
                     ship_1_angle = np.random.uniform(0, 2 * np.pi)
                     ship_1_radius = np.random.uniform(0, self.max_distance_between_ships)
@@ -419,29 +428,48 @@ class HatEnv(gym.Env):
         ship_1_orientation = np.rad2deg(np.random.uniform(0, 2 * np.pi))
         ship_2_orientation = np.rad2deg(np.random.uniform(0, 2 * np.pi))
 
-        self.ship_1 = Ship(ship_1_loc, ship_1_orientation, self.num_ship_1_weapon_0, self.num_ship_1_weapon_1,
-                           self.weapon_0_reload_time, self.weapon_1_reload_time, self.weapon_0_speed,
-                           self.weapon_1_speed, self.rng)
-        self.ship_2 = Ship(ship_2_loc, ship_2_orientation, self.num_ship_2_weapon_0, self.num_ship_2_weapon_1,
-                           self.weapon_0_reload_time, self.weapon_1_reload_time, self.weapon_0_speed,
-                           self.weapon_1_speed, self.rng)
+        self.ship_1 = Ship(
+            ship_1_loc,
+            ship_1_orientation,
+            self.num_ship_1_weapon_0,
+            self.num_ship_1_weapon_1,
+            self.weapon_0_reload_time,
+            self.weapon_1_reload_time,
+            self.weapon_0_speed,
+            self.weapon_1_speed,
+            self.rng,
+        )
+        self.ship_2 = Ship(
+            ship_2_loc,
+            ship_2_orientation,
+            self.num_ship_2_weapon_0,
+            self.num_ship_2_weapon_1,
+            self.weapon_0_reload_time,
+            self.weapon_1_reload_time,
+            self.weapon_0_speed,
+            self.weapon_1_speed,
+            self.rng,
+        )
 
         if self.verbose:
             # Note: Convenience message, can be deleted if no longer useful
             print("Ship location info:")
             print(f"\tShip 1 location: {ship_1_loc}, \n\tShip 2 location: {ship_2_loc}")
 
-        self.generator = WaveGenerator(ship_1_loc, ship_2_loc,
-                                       self.threat_0_kill_radius,
-                                       self.threat_1_kill_radius,
-                                       threat_0_speed=self.threat_0_speed,
-                                       threat_1_speed=self.threat_1_speed,
-                                       threat_0_kill_prob=self.threat_0_kill_prob,
-                                       threat_1_kill_prob=self.threat_1_kill_prob,
-                                       min_threat_distance=self.min_threat_distance,
-                                       max_threat_distance=self.max_threat_distance,
-                                       schedule=self.schedule,
-                                       seed=self.rng.randint(0, 99999))
+        self.generator = WaveGenerator(
+            ship_1_loc,
+            ship_2_loc,
+            self.threat_0_kill_radius,
+            self.threat_1_kill_radius,
+            threat_0_speed=self.threat_0_speed,
+            threat_1_speed=self.threat_1_speed,
+            threat_0_kill_prob=self.threat_0_kill_prob,
+            threat_1_kill_prob=self.threat_1_kill_prob,
+            min_threat_distance=self.min_threat_distance,
+            max_threat_distance=self.max_threat_distance,
+            schedule=self.schedule,
+            seed=self.rng.randint(0, 99999),
+        )
 
         self.threats = {}
         self.weapons = []
@@ -650,9 +678,9 @@ class HatEnv(gym.Env):
         y += self.screen_height // 2
 
         r = self.max_threat_distance / self.coordinate_size_reduction
-        w = (r - self.min_threat_distance / self.coordinate_size_reduction)
+        w = r - self.min_threat_distance / self.coordinate_size_reduction
 
-        c_surface = pygame.Surface((2*r, 2*r), pygame.SRCALPHA)
+        c_surface = pygame.Surface((2 * r, 2 * r), pygame.SRCALPHA)
         c_surface.set_colorkey((215, 215, 215))
         c_surface.set_alpha(25)
         pygame.draw.circle(c_surface, (255, 0, 0), (r, r), r, width=int(w))

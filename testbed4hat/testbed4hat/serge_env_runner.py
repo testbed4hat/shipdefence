@@ -50,7 +50,9 @@ WEAPON_TEMPLATE = {
         "sidc": "30030200001100000205",
         "size": "S",
         "turn": 0,
-        "threat_targeted": "threat_id",
+        "type": "Weapon Type",
+        "Launched by": "Ship Name",
+        "Threat Targeted": "threat_id",
         "Expected ETA": "15:09",
     },
     "type": "Feature",
@@ -226,7 +228,7 @@ class SergeEnvRunner:
 
     @staticmethod
     def _sim_threat_id_to_serge_id(threat_id: str) -> str:
-        return threat_id[len("threat_"):]
+        return threat_id[len("threat_") :]
 
     @staticmethod
     def _serge_threat_id_to_sim_id(threat_id: str) -> str:
@@ -291,7 +293,7 @@ class SergeEnvRunner:
         ship_targeted = self.ship_1_serge_name if target_ship == 1 else self.ship_2_serge_name
         WA_MSG["message"]["Threat"]["Ship Targeted"] = ship_targeted
         speed = np.linalg.norm(threat_info["velocity"])
-        WA_MSG['message']["Threat"]["Velocity"] = str(speed)
+        WA_MSG["message"]["Threat"]["Velocity"] = str(speed)
         WA_MSG["message"]["Title"] = "Suggested WA"
         WA_MSG["message"]["Weapon"] = self.WEAPON_INT_TO_STR[weapon_type]
         return WA_MSG
@@ -327,7 +329,7 @@ class SergeEnvRunner:
         # want weapon assigned type?
         return threat_dict
 
-    def _make_weapon_dict(self, weapon: dict) -> dict:
+    def _make_weapon_dict(self, ship_name: str, weapon: dict) -> dict:
         weapon_dict = deepcopy(WEAPON_TEMPLATE)
         weapon_x, weapon_y = weapon["location"]
 
@@ -337,6 +339,8 @@ class SergeEnvRunner:
         weapon_dict["properties"]["id"] = weapon["weapon_id"]
         weapon_dict["properties"]["label"] = weapon["weapon_id"]
         weapon_dict["properties"]["turn"] = self.turn
+        weapon_dict["properties"]["type"] = self.WEAPON_INT_TO_STR[weapon["weapon_type"]]
+        weapon_dict["properties"]["Launched by"] = ship_name
         weapon_dict["properties"]["Expected ETA"] = weapon["time_left"]
         weapon_dict["properties"]["Threat Targeted"] = weapon["target_id"]
         weapon_dict["properties"]["PK"] = weapon["probability_of_kill"]
@@ -406,14 +410,14 @@ class SergeEnvRunner:
         weapon_ids = set()
         for weapon in self.obs["ship_1"]["weapons"]:
             weapon_ids.add(weapon["weapon_id"])
-            weapon_dict = self._make_weapon_dict(weapon)
+            weapon_dict = self._make_weapon_dict(self.ship_1_serge_name, weapon)
             weapons.append(weapon_dict)
 
         for weapon in self.obs["ship_2"]["weapons"]:
             weapon_id = weapon["weapon_id"]
             if weapon_id not in weapon_ids:
                 weapon_ids.add(weapon["weapon_id"])
-                weapon_dict = self._make_weapon_dict(weapon)
+                weapon_dict = self._make_weapon_dict(self.ship_2_serge_name, weapon)
                 weapons.append(weapon_dict)
 
         step_message = deepcopy(MSG_MAPPING_SHIPS)
@@ -573,6 +577,6 @@ class SergeEnvRunner:
 
 
 if __name__ == "__main__":
-    game_id = "wargame-lzsq7w1g"
+    game_id = "wargame-lzudwjdd"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
