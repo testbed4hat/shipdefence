@@ -240,6 +240,7 @@ class SergeEnvRunner:
         assert wa_message["details"]["channel"] in [self.ship_1_channel_id, self.ship_2_channel_id]  # must be set!
         ship_number = 0 if wa_message["details"]["channel"] == self.ship_1_channel_id else 1
         weapon_type = self.WEAPON_STR_TO_INT[wa_message["message"]["Weapon"]]
+        # TODO: A user-created or edited WA message may not have the correct ID
         threat_id = self._serge_threat_id_to_sim_id(wa_message["message"]["Threat"]["ID"])
         return ship_number, weapon_type, threat_id
 
