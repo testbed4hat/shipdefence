@@ -1,0 +1,25 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:ship)
+    entity(var:wa)
+    entity(var:missile_0)
+    entity(var:missile_1,
+      [ prov:type='serge:MissileInTheAir',
+        prov:type='var:missile_type',
+        serge:position='var:position',
+        serge:velocity='var:velocity',
+        serge:target='var:target'
+      ]
+    )
+    wasDerivedFrom(var:missile_1, var:missile_0)
+    wasAttributedTo(var:missile_1, var:ship)
+
+
+  endBundle
+endDocument

@@ -97,6 +97,12 @@
       "template": "templates/targeting_amendment.provn",
       "package": "org.openprovenance.prov4serge",
       "bindings": "templates/targeting_amendment_bindings.json"
+    },
+    { "name": "missile_launch",
+      "@type": "simple",
+      "template": "templates/missile_launch.provn",
+      "package": "org.openprovenance.prov4serge",
+      "bindings": "templates/missile_launch_bindings.json"
     }
   ]
 }

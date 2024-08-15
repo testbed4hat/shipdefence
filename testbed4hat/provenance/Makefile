@@ -4,6 +4,8 @@ PYPROVCONVERT:=prov-convert
 
 OUTPUTS:=outputs
 
+GAME_ID:=wargame-lzudwjdd
+
 # Generic rules to convert PROV-N to TTL or to SVG/PDF formats
 %.json: %.provn
 	$(PROVCONVERT) -infile $< -outfile $@
@@ -20,20 +22,20 @@ OUTPUTS:=outputs
 %.png: %.json
 	$(PYPROVCONVERT) -f png $< $@
 
-.PHONY: compile-templates
+.PHONY: provenance clean
 
-compile-templates:
+$(OUTPUTS)/generated/bin/prov4serge: templates/config.json
 	$(PROVCONVERT) -templatebuilder templates/config.json
 	cd $(OUTPUTS)/generated/java/templates; mvn clean install
-
-
-$(OUTPUTS)/generated/bin/prov4serge: compile-templates
 
 $(OUTPUTS)/provenance:
 	mkdir -p $@
 
-$(OUTPUTS)/provenance/wargame-lzmnr7lj.provn: $(OUTPUTS)/provenance $(OUTPUTS)/generated/bin/prov4serge csv/wargame-lzmnr7lj.csv
-	$(OUTPUTS)/generated/bin/prov4serge -i csv/wargame-lzmnr7lj.csv -o $@
+$(OUTPUTS)/provenance/$(GAME_ID).provn: $(OUTPUTS)/provenance $(OUTPUTS)/generated/bin/prov4serge csv/$(GAME_ID).csv
+	$(OUTPUTS)/generated/bin/prov4serge -i csv/$(GAME_ID).csv -o $@
 
 
-provenance: $(OUTPUTS)/provenance/wargame-lzmnr7lj.provn $(OUTPUTS)/provenance/wargame-lzmnr7lj.json $(OUTPUTS)/provenance/wargame-lzmnr7lj.pdf
+provenance: $(OUTPUTS)/provenance/$(GAME_ID).provn $(OUTPUTS)/provenance/$(GAME_ID).json $(OUTPUTS)/provenance/$(GAME_ID).pdf
+
+clean:
+	rm -rf $(OUTPUTS)/provenance/*

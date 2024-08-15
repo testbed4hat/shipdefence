@@ -159,6 +159,20 @@ MissileBinding = namedtuple(
         "target",
     ],
 )
+MissileLaunchBinding = namedtuple(
+    "MissileLaunchBinding",
+    [
+        "isA",
+        "ship",
+        "missile_0",
+        "missile_1",
+        "missile_type",
+        "position",
+        "velocity",
+        "target",
+        "wa",
+    ],
+)
 TargetSuggestionBinding = namedtuple(
     "TargetSuggestionBinding",
     [
@@ -299,11 +313,12 @@ class Asset(MutableGameObject):
 
 
 class Missile(Asset):
-    def __init__(self, asset_id, name, missile_type, force, position, velocity, target):
+    def __init__(self, asset_id, name, missile_type, force, position, velocity, target_id: str, parent: Asset = None):
         # threat, threat_type, fserial, force, force_name, name, position, velocity, target
         super().__init__(asset_id, name, missile_type, force, position)
         self.speed = velocity
-        self.target: Asset | None = target
+        self.target_id: str | None = target_id
+        self.parent: Asset | None = parent
 
     @property
     def bindings(self) -> MissileBinding:
@@ -318,7 +333,25 @@ class Missile(Asset):
             self.name,
             self.position,
             self.speed,
-            self.target.serial if self.target is not None else None,  # target
+            self.target_id,  # target
+        )
+
+    def launch(self, position, velocity, target_id: str, wa_id: str):
+        assert self.parent is not None  # require a parent to launch
+        self.create_new_version()
+        self.position = position
+        self.speed = velocity
+        self.target_id = target_id
+        return MissileLaunchBinding(
+            "missile_launch",
+            self.parent.curr_version_id,  # ship
+            self.prev_version_id,  # missile_0
+            self.curr_version_id,  # missile_1
+            self.platform_type,  # missile_type
+            self.position,  # position
+            self.speed,  # velocity
+            self.target_id,  # target
+            wa_id,  # wa
         )
 
 
@@ -341,6 +374,10 @@ class Force(MutableGameObject):
 
     def add_asset(self, asset: Asset):
         self.assets[asset.serial] = asset
+
+    def remove_asset(self, asset: Asset):
+        if asset.serial in self.assets:
+            del self.assets[asset.serial]
 
     def reset_perceptions(self):
         self.perceptions = set()
@@ -471,7 +508,12 @@ class ShipDefenceWorld:
         self.forces: dict[str, Force] = dict()
         self.channels: dict[str, Channel] = dict()
         self.plans: dict[str, dict[int, str]] = defaultdict(dict)
-        self.bindings: list[tuple] = list()
+        # missiles seen on the map in the current turn
+        self.missile_seen: dict[str, set[str]] = defaultdict(set)  # force_id -> {missile_id}
+        # actions released their corresponding WA message id (in a list to accommodate multiple same actions)
+        self.actions: dict[tuple, list[str]] = defaultdict(list)
+
+        self.bindings: list[tuple] = list()  # list of provenance bindings
 
     def record_bindings(self, bindings: tuple):
         escaped_bindings = tuple(map(escaping_newline_characters, bindings))
@@ -543,6 +585,10 @@ class ShipDefenceWorld:
 
     def new_turn(self, turn_number: int):
         logger.info("[New Turn: %d] – Started at %s", turn_number, self.timestamp)
+
+        # resetting the ephemeral states that should not persist across game turns
+        self.missile_seen = defaultdict(set)
+
         self.turn_numer = turn_number
         logger.debug("> Updating perceptions of all forces")
         for force in self.forces.values():
@@ -640,11 +686,11 @@ class ShipDefenceWorld:
         # self.end_turn_update(msg) ??
 
     def process_mapping_message(self, msg):
-        # for asset_data in force_data.assets:
-        #     self.add_asset(force, asset_data)
         features = msg.featureCollection.features
         for feature in features:
-            self.update_feature(feature)
+            # only process "Point" features
+            if feature.geometry.type == "Point":
+                self.update_feature(feature)
 
     def update_ship(self, force: Force, ship_id: str, position, properties: dict):
         if ship_id not in force.assets:
@@ -674,48 +720,114 @@ class ShipDefenceWorld:
                     return asset
         return None
 
-    def update_missile(self, force: Force, missile_id: str, position, properties: dict):
+    def update_threat(self, force: Force, missile_id: str, position, properties: dict):
         if missile_id not in force.assets:
+            # create the Missile
+            missile_type = properties.get("Detected type", "UndeterminedMissile")
             velocity = properties.get("Velocity", None)
-            target_name = properties.get("Ship Targeted", None)
+            target_name: str | None = properties.get("Ship Targeted", None)
+
             target = self.find_asset_by_name(target_name)
-            missile = Missile(missile_id, properties["label"], "Missile", force, position, velocity, target)
+            missile = Missile(
+                missile_id,
+                properties["label"],
+                convert_to_type(missile_type),
+                force,
+                position,
+                velocity,
+                target.serial,
+                None,
+            )
             self.assets[missile.serial] = missile
             force.add_asset(missile)
             self.record_bindings(missile.bindings)
         else:
             # TODO: update any changes to the missile
-            pass
+            missile = force.assets[missile_id]
+            missile.update_state(properties.get("heath", None), position, None, properties.get("Velocity", None))
+
+    def update_weapon(self, force: Force, missile_id: str, position, properties: dict):
+        if missile_id not in self.assets:
+            # create the Missile
+            missile_type = properties.get("type", "UndeterminedMissile")
+            parent_name = properties.get("Launched by", None)
+            parent = self.find_asset_by_name(parent_name)
+            target_id: str | None = properties.get("Threat Targeted", None)
+            # hack to reconcile the shortened threat ID
+            target_id = target_id[target_id.index("_") + 1 :]
+            missile = Missile(
+                missile_id,
+                properties["label"],
+                convert_to_type(missile_type),
+                force,
+                None,  # this and the below properties will be added in the launch event below
+                None,
+                None,
+                parent,
+            )
+            self.assets[missile.serial] = missile
+            force.add_asset(missile)
+            self.record_bindings(missile.bindings)
+
+            # create a launch event and link it with the WA message that released the weapon
+            try:
+                wa_id = self.actions[(parent.serial, missile_type, target_id)].pop(0)
+            except IndexError:
+                logger.warning(
+                    "No WA message recorded for for %s's weapon %s (%s) targeting %s",
+                    parent.serial,
+                    missile_id,
+                    missile_type,
+                    target_id,
+                )
+                logger.debug("Currently recorded actions: %s", self.actions)
+                wa_id = None
+            self.record_bindings(missile.launch(position, properties.get("Velocity", None), target_id, wa_id))
+        else:
+            # TODO: update any changes to the missile
+            missile = force.assets[missile_id]
+            missile.update_state(properties.get("heath", None), position, None, None)
 
     def update_feature(self, feature):
-        # only process "Point" features
-        if feature.geometry.type != "Point":
-            return
-        pos_lon, pos_lat = feature.geometry.coordinates
         # copy the properties dict
         properties = dict(feature.properties)
+
         _type = properties.pop("_type")
         if _type != "MilSymRenderer":
+            # We only process MilSymRenderer objects in this scenario
             return
+
+        pos_lon, pos_lat = feature.geometry.coordinates
         force_id: str = properties.pop("force")
         feature_id: str = properties.pop("id")
         force = self.forces.get(force_id)
+
         if feature_id.startswith("ship-"):
             self.update_ship(force, feature_id, f"{pos_lat},{pos_lon}", properties)
         else:
-            self.update_missile(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+            # must be a missile; add it to the list of missiles seen in this round
+            self.missile_seen[force_id].add(feature_id)
+            # determine weapon or threat
+            if feature_id.startswith("weapon_"):
+                self.update_weapon(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+            else:
+                self.update_threat(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+
+        # TODO: remove missile(s) not seen in this round
+        pass
 
     def process_WA_message(self, msg):
         # Generate bindings for the various steps in the message's lifecyle
         # 1. Targetting suggesting
         asset = self.find_asset_by_name(msg.asset_name)
         target = self.find_asset_by_id(msg.target_id)
+        current_id = msg.message_id
 
         self.record_bindings(
             TargetSuggestionBinding(
                 "targeting_suggestion",  # targeting_suggestion
                 msg.sender.curr_version_id,  # sender
-                msg.message_id,  # wa
+                current_id,  # wa
                 "AISuggestion" if msg.sender.serial == "ai-assistant" else "ManualAssignment",  # wa_type
                 asset.curr_version_id,  # asset
                 target.curr_version_id,  # target
@@ -724,7 +836,7 @@ class ShipDefenceWorld:
         )
         # 2. Amendments if any
         if "feedback" in msg.history:
-            previous_id = msg.message_id
+            previous_id = current_id
             p_action = re.compile(r"^\[(?P<action>\w+)\]")
             for feedback in msg.history.feedback:
                 role = self.roles.get(feedback.fromId)
@@ -748,6 +860,11 @@ class ShipDefenceWorld:
                         msg.weapon,  # weapon
                     )
                 )
+
+            if msg.history.status == "Released":
+                # 3. Remember WA message ID for the assignment
+                self.actions[(asset.serial, msg.weapon, target.serial)].append(current_id)
+                logger.debug("Weapon to release (%s): %s", current_id, (asset.serial, msg.weapon, target.serial))
 
     def process_custom_message(self, msg: dict):
         details: dict = msg.get("details")
@@ -794,7 +911,6 @@ class ShipDefenceWorld:
         self.init_game(first_info_message)
         while messages:
             msg = messages.pop(0)
-            print(msg.messageType, msg._id)
             self.timestamp = msg.timestamp
             if msg.messageType == "InfoMessage":
                 self.process_info_message(msg)
@@ -832,7 +948,7 @@ if __name__ == "__main__":
     csv_folder = Path("provenance/csv")
     target_folder = Path("provenance/outputs")
 
-    game_id = "wargame-lzmnr7lj"
+    game_id = "wargame-lzudwjdd"
     log_file_handler = logging.FileHandler(target_folder / f"{game_id}.log")
     logger.addHandler(log_file_handler)
 
