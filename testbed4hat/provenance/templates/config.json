@@ -68,6 +68,12 @@
       "package": "org.openprovenance.prov4serge",
       "bindings": "templates/asset_bindings.json"
     },
+    { "name": "asset_update",
+      "@type": "simple",
+      "template": "templates/asset_update.provn",
+      "package": "org.openprovenance.prov4serge",
+      "bindings": "templates/asset_update_bindings.json"
+    },
     { "name": "force",
       "@type": "simple",
       "template": "templates/force.provn",

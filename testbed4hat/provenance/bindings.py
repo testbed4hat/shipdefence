@@ -127,6 +127,21 @@ AssetBinding = namedtuple(
         "position",
     ],
 )
+AssetUpdateBinding = namedtuple(
+    "AssetUpdateBinding",
+    [
+        "isA",
+        "asset_0",
+        "asset_1",
+        "asset_type",
+        "name",
+        "position",
+        "speed",
+        "condition",
+        "state",
+        "turn",
+    ],
+)
 MissileBinding = namedtuple(
     "MissileBinding",
     [

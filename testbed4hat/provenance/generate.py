@@ -114,12 +114,33 @@ class Asset(MutableGameObject):
             self.position,
         )
 
-    def update_state(self, condition, position, state, speed):
-        self.create_new_version()
-        self.condition = condition
-        self.position = position
-        self.state = state
-        self.speed = speed
+    def update_state(self, turn: int, condition, position, state, speed):
+        # create a diff
+        new_condition = condition if condition is not None and condition != self.condition else None
+        new_position = position if position is not None and position != self.position else None
+        new_state = state if state is not None and state != self.state else None
+        new_speed = speed if speed is not None and speed != self.speed else None
+
+        if new_condition or new_position or new_state or new_speed:
+            self.create_new_version()
+            self.condition = condition
+            self.position = position
+            self.state = state
+            self.speed = speed
+            return AssetUpdateBinding(
+                "asset_update",
+                self.prev_version_id,  # asset0
+                self.curr_version_id,  # asset1
+                self.platform_type,  # asset_type
+                self.name,  # name
+                new_position,  # position
+                new_speed,  # speed
+                new_condition,  # condition
+                new_state,  # state
+                turn,
+            )
+        else:
+            return None
 
 
 class Missile(Asset):
@@ -326,6 +347,8 @@ class ShipDefenceWorld:
         self.bindings: list[tuple] = list()  # list of provenance bindings
 
     def record_bindings(self, bindings: tuple):
+        if tuple is None:
+            return  # nothing to record
         escaped_bindings = tuple(map(escaping_newline_characters, bindings))
         self.bindings.append(escaped_bindings)
 
@@ -552,9 +575,12 @@ class ShipDefenceWorld:
             force.add_asset(missile)
             self.record_bindings(missile.bindings)
         else:
-            # TODO: update any changes to the missile
             missile = force.assets[missile_id]
-            missile.update_state(properties.get("heath", None), position, None, properties.get("Velocity", None))
+            self.record_bindings(
+                missile.update_state(
+                    properties["turn"], properties.get("heath", None), position, None, properties.get("Velocity", None)
+                )
+            )
 
     def update_weapon(self, force: Force, missile_id: str, position, properties: dict):
         if missile_id not in self.assets:
@@ -594,9 +620,12 @@ class ShipDefenceWorld:
                 wa_id = None
             self.record_bindings(missile.launch(position, properties.get("Velocity", None), target_id, wa_id))
         else:
-            # TODO: update any changes to the missile
             missile = force.assets[missile_id]
-            missile.update_state(properties.get("heath", None), position, None, None)
+            self.record_bindings(
+                missile.update_state(
+                    properties["turn"], properties.get("heath", None), position, None, properties.get("Velocity", None)
+                )
+            )
 
     def update_feature(self, feature):
         # copy the properties dict
