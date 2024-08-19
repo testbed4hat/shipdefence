@@ -616,7 +616,11 @@ class ShipDefenceWorld:
                     missile_type,
                     target_id,
                 )
-                logger.debug("Currently recorded actions: %s", self.actions)
+                logger.debug(
+                    "Looked up key %s from current recorded actions: %s",
+                    (parent.serial, missile_type, target_id),
+                    self.actions,
+                )
                 wa_id = None
             self.record_bindings(missile.launch(position, properties.get("Velocity", None), target_id, wa_id))
         else:
