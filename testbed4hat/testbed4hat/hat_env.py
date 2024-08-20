@@ -32,6 +32,8 @@ from .hat_env_config import HatEnvConfig
 
 
 class HatEnv(gym.Env):
+    VALID_SHIP_IDS = {0, 1}
+
     def __init__(self, config: HatEnvConfig):
         self.config = config
 
@@ -158,6 +160,10 @@ class HatEnv(gym.Env):
         if self.verbose:
             warnings.warn(warning_text)
 
+    def _get_ship(self, ship_id: int) -> Ship:
+        assert ship_id in self.VALID_SHIP_IDS
+        return self.ships[ship_id]
+
     def _add_threats(self, second: int) -> None:
         """Get threats from the threat generator"""
         new_threats = self.generator.wave(second)
@@ -166,12 +172,11 @@ class HatEnv(gym.Env):
 
     def _add_weapon(self, ship_id: int, threat_id: str, weapon_type: int) -> WeaponLaunchInfo:
         """Try to add a weapon to the environment from a ship, report result to the user."""
-        assert isinstance(ship_id, int)
         assert isinstance(threat_id, str)
         assert isinstance(weapon_type, int)
         weapon_id = f"weapon_{self.weapon_counter}"
         threat = self.threats[threat_id]
-        ship = self.ship_1 if ship_id == 0 else self.ship_2
+        ship = self._get_ship(ship_id)
         weapon = ship.use_weapon(weapon_type, threat, weapon_id)
         if isinstance(weapon, Weapon):
             self.weapons.append(weapon)
@@ -271,29 +276,17 @@ class HatEnv(gym.Env):
         threats_to_pop = []
         for threat_id, threat in self.threats.items():
             threat.step()
-            if threat.target_ship_id == 0:
-                d = distance(self.ship_1.location, threat.location)
-                if threat.kill(self.ship_1.location):
-                    self.ship_1.make_dead(second)
-                    message = ShipDestroyedMessage(1, threat_id, second, d)
-                    self.step_messages.append(message)
-                    break
-                elif d < 100:
-                    threats_to_pop.append(threat_id)
-                    message = ThreatMissMessage(threat_id, threat.target_ship_id, second)
-                    self.step_messages.append(message)
-
-            if threat.target_ship_id == 1:
-                d = distance(self.ship_2.location, threat.location)
-                if threat.kill(self.ship_2.location):
-                    self.ship_2.make_dead(second)
-                    message = ShipDestroyedMessage(2, threat_id, second, d)
-                    self.step_messages.append(message)
-                    break
-                elif d < 100:
-                    threats_to_pop.append(threat_id)
-                    message = ThreatMissMessage(threat_id, threat.target_ship_id, second)
-                    self.step_messages.append(message)
+            ship = self._get_ship(threat.target_ship_id)
+            d = distance(ship.location, threat.location)
+            if threat.kill(ship.location):
+                ship.make_dead(second)
+                message = ShipDestroyedMessage(threat.target_ship_id, threat_id, second, d)
+                self.step_messages.append(message)
+                break
+            elif d < 100:
+                threats_to_pop.append(threat_id)
+                message = ThreatMissMessage(threat_id, threat.target_ship_id, second)
+                self.step_messages.append(message)
 
         # remove any threats that were eliminated in this step
         if len(threats_to_pop) > 0:
@@ -301,7 +294,7 @@ class HatEnv(gym.Env):
                 self.threats.pop(threat_id)
 
     def _threat_observation(self, ship_id: int, threat: Threat) -> dict:
-        ship = self.ship_1 if ship_id == 0 else self.ship_2
+        ship = self._get_ship(ship_id)
         threat_dist = distance(ship.location, threat.location)
         threat_abs_angle = np.arctan2(threat.location[1] - ship.location[1], threat.location[0] - ship.location[0])
         threat_angle = ship.orientation - np.rad2deg(threat_abs_angle)
@@ -313,8 +306,8 @@ class HatEnv(gym.Env):
         weapons_assigned_type = [w.weapon_type for w in self.weapons if w.threat.threat_id == threat.threat_id]
         weapons_assigned_p_kill = [w.p_kill for w in self.weapons if w.threat.threat_id == threat.threat_id]
 
-        threat_target = threat.target_ship_id
-        target_location = self.ship_1.location if threat_target == 0 else self.ship_2.location
+        target_ship = self._get_ship(threat.target_ship_id)
+        target_location = target_ship.location
         target_dist = distance(target_location, threat.location)
         estimated_time_to_arrival = target_dist / np.linalg.norm(threat.velocity)
 
@@ -331,13 +324,13 @@ class HatEnv(gym.Env):
             "weapons_assigned_type": weapons_assigned_type,
             "weapons_assigned_p_kill": weapons_assigned_p_kill,
             "estimated_time_of_arrival": estimated_time_to_arrival,
-            "target_ship": threat_target + 1,  # add one to put ships back in 1-index
+            "target_ship": threat.target_ship_id + 1,  # add one to put ships back in 1-index
         }
 
         return obs
 
     def _weapon_observation(self, ship_id: int, weapon: Weapon) -> dict:
-        ship = self.ship_1 if ship_id == 0 else self.ship_2
+        ship = self._get_ship(ship_id)
         weapon_dist = distance(ship.location, weapon.location)
         weapon_abs_angle = np.arctan2(weapon.location[1] - ship.location[1], weapon.location[0] - ship.location[0])
         weapon_angle = ship.orientation - np.rad2deg(weapon_abs_angle)
@@ -539,8 +532,8 @@ class HatEnv(gym.Env):
             self._threat_process(self.time_seconds)
 
             # Step the ships
-            self.ship_1.step()
-            self.ship_2.step()
+            for ship in self.ships:
+                ship.step()
 
             # Render if configured
             if self.render_env:
@@ -691,8 +684,8 @@ class HatEnv(gym.Env):
             self._draw_threat(threat)
         for weapon in self.weapons:
             self._draw_weapon(weapon)
-        self._draw_ship(self.ship_1)
-        self._draw_ship(self.ship_2)
+        for ship in self.ships:
+            self._draw_ship(ship)
         self._draw_weapon_rings()
         if self.draw_threat_spawn_region:
             self._draw_threat_spawn_region()
