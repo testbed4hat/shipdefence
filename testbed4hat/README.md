@@ -169,6 +169,11 @@ why.
 Lastly, the "messages" list provides useful information about events occurring within a given step, such as invalid 
 actions, wasted munitions, and what ship was destroyed (if one is destroyed). 
 
+## Probabilities of successful interception versus range, threat, and interceptor type
+
+The following graph shows how the probability of a successful interception varies with range, threat type, and interceptor type. Note that the range refers to the range at which the inteceptor reaches the threat, which can be calculated based on the threat speed and interceptor speed (but also is provided by the simulation status updates).
+![pk_table](https://github.com/user-attachments/assets/b0b547f2-cf7a-4901-a9f4-326efba19849)
+
 
 ## License
 
