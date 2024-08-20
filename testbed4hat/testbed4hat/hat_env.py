@@ -55,8 +55,6 @@ class HatEnv(gym.Env):
         self.wasted_weapon_reward = self.config.wasted_weapon_reward
         self.max_episode_time_in_seconds = self.config.max_episode_time_in_seconds
         self.verbose = self.config.verbose
-        self.ship_1_id = 0
-        self.ship_2_id = 1
 
         # The max number of each kind of weapon that can be launched per ship per turn. Used to warn users they are
         #   asking for too many weapon launches per turn, and to quite processing actions early, if needed.
@@ -212,35 +210,20 @@ class HatEnv(gym.Env):
     def _process_actions(self) -> list:
         """1 action per ship is processed per second. Weapon launches can fail, in which case, nothing happens."""
         actions_taken = []
-        ship_1_act_available = True
-        ship_2_act_available = True
+        ships_act_available = [True for _ in range(len(self.ships))]
         if len(self.action_queue) > 0:
             new_action_queue = []
             for action in self.action_queue:
-                if ship_1_act_available or ship_2_act_available:
-                    ship_id, weapon_type, threat_id = action
-
-                    if ship_id == 0 and ship_1_act_available:
-                        if threat_id in self.threats:
-                            weapon = self._add_weapon(ship_id, threat_id, weapon_type)
-                            actions_taken.append(weapon)
-                            if not weapon.launched and weapon.reason == "RELOADING":
-                                new_action_queue.append(action)  # add the action back in so we can try again later
-                        else:
-                            self._warn(f"Tried to target a non-existing threat ID={threat_id}! Ignoring action")
-                        ship_1_act_available = False
-                    elif ship_id == 1 and ship_2_act_available:
-                        ship_id, weapon_type, threat_id = action
-                        if threat_id in self.threats:
-                            weapon = self._add_weapon(ship_id, threat_id, weapon_type)
-                            actions_taken.append(weapon)
-                            if not weapon.launched and weapon.reason == "RELOADING":
-                                new_action_queue.append(action)  # add the action back in so we can try again later
-                        else:
-                            self._warn(f"Tried to target a non-existing threat ID={threat_id}! Ignoring action")
-                        ship_2_act_available = False
+                ship_id, weapon_type, threat_id = action
+                if ships_act_available[ship_id]:
+                    if threat_id in self.threats:
+                        weapon = self._add_weapon(ship_id, threat_id, weapon_type)
+                        actions_taken.append(weapon)
+                        if not weapon.launched and weapon.reason == "RELOADING":
+                            new_action_queue.append(action)  # add the action back in so we can try again later
                     else:
-                        new_action_queue.append(action)
+                        self._warn(f"Tried to target a non-existing threat ID={threat_id}! Ignoring action")
+                    ships_act_available[ship_id] = False
                 else:
                     new_action_queue.append(action)
 
