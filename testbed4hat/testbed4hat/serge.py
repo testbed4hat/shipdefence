@@ -6,6 +6,7 @@ import requests
 # Time to wait for a request to Serge to complete
 TIMEOUT = 15  # seconds
 
+
 class SergeGame:
     ID_CO_A = "co-alpha"
     ID_CO_B = "co-bravo"

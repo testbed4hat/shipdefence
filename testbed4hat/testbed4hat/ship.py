@@ -25,16 +25,18 @@ NO_INVENTORY = "NO INVENTORY"
 
 
 class Ship:
-    def __init__(self, location: Tuple[float, float],
-                 orientation: float,
-                 num_weapon_0: int,
-                 num_weapon_1: int,
-                 weapon_0_reload_time: int,
-                 weapon_1_reload_time: int,
-                 weapon_0_speed: float,
-                 weapon_1_speed: float,
-                 rng: np.random.RandomState,
-                 ):
+    def __init__(
+        self,
+        location: Tuple[float, float],
+        orientation: float,
+        num_weapon_0: int,
+        num_weapon_1: int,
+        weapon_0_reload_time: int,
+        weapon_1_reload_time: int,
+        weapon_0_speed: float,
+        weapon_1_speed: float,
+        rng: np.random.RandomState,
+    ):
         """
         A Ship object used in the HAT simulation environment. Has a location and orientation, holds a number of
         weapons, and can launch weapons.
@@ -108,7 +110,7 @@ class Ship:
 
     def weapon_inventory(self):
         return {"weapon_0_inventory": self.num_weapon_0, "weapon_1_inventory": self.num_weapon_1}
-    
+
     def weapon_status(self):
         return {"weapon_0_reloading": self.weapon_0_reloading, "weapon_1_reloading": self.weapon_1_reloading}
 

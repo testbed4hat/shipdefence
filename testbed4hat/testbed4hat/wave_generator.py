@@ -28,18 +28,21 @@ DEGREE_IN_RADIANS = np.deg2rad(1)
 class WaveGenerator:
     SCHEDULE_STRING_OPTIONS = ["random", "default"]
 
-    def __init__(self, ship_1_location: tuple[float, float],
-                 ship_2_location: tuple[float, float],
-                 threat_0_kill_radius: float,
-                 threat_1_kill_radius: float,
-                 threat_0_speed: float = DEFAULT_THREAT_0_SPEED,
-                 threat_1_speed: float = DEFAULT_THREAT_1_SPEED,
-                 threat_0_kill_prob: float = 0.95,
-                 threat_1_kill_prob: float = 0.95,
-                 min_threat_distance: float = 50_000,
-                 max_threat_distance: float = 70_000,
-                 schedule: Union[str, dict] = "random",
-                 seed=None):
+    def __init__(
+        self,
+        ship_1_location: tuple[float, float],
+        ship_2_location: tuple[float, float],
+        threat_0_kill_radius: float,
+        threat_1_kill_radius: float,
+        threat_0_speed: float = DEFAULT_THREAT_0_SPEED,
+        threat_1_speed: float = DEFAULT_THREAT_1_SPEED,
+        threat_0_kill_prob: float = 0.95,
+        threat_1_kill_prob: float = 0.95,
+        min_threat_distance: float = 50_000,
+        max_threat_distance: float = 70_000,
+        schedule: Union[str, dict] = "random",
+        seed=None,
+    ):
         """
         Object responsible for generating waves of threats for the HAT environment simulation. Waves are specified per
         second in the simulation. A max of one threat type per second allowed.
@@ -86,16 +89,16 @@ class WaveGenerator:
                 0: (1, 0),  # start of sim
                 4 * 60: (1, 1),  # 4 minutes
                 5 * 60 + 30: (0, 1),  # 5 minutes 30 seconds
-                7 * 60: (1, 1)  # 7 minutes
+                7 * 60: (1, 1),  # 7 minutes
             }
         elif schedule == "random":
             # 40 weapons spread over a schedule of 15 minutes, only 1 of each weapon can be launched per second
             num_threat_0 = self.rng.integers(low=20, high=40)
             num_threat_1 = 40 - num_threat_0
-            times1 = self.rng.choice(range(60*15), size=num_threat_0, replace=False)
-            times2 = self.rng.choice(range(60*15), size=num_threat_1, replace=False)
+            times1 = self.rng.choice(range(60 * 15), size=num_threat_0, replace=False)
+            times2 = self.rng.choice(range(60 * 15), size=num_threat_1, replace=False)
             schedule = {}
-            for t in range(60*15):
+            for t in range(60 * 15):
                 if t in times1 and t in times2:
                     schedule[t] = (1, 1)
                 elif t in times1:
@@ -109,13 +112,13 @@ class WaveGenerator:
             raise ValueError("schedule must be either 'default', 'random', or a dict")
 
         # set the threat counter to keep track of threat IDs
-        self.threat_counter = 1
+        self.threat_counter: int = 1
 
     def _create_threat(self, threat_type):
         distance_sample = self.rng.uniform(self.min_threat_distance, self.max_threat_distance)  # distance from (0, 0)
         angle_sample = self.rng.uniform(0, 2 * np.pi)  # angle from (0, 0)
         position = np.cos(angle_sample) * distance_sample, np.sin(angle_sample) * distance_sample
-        
+
         # pick a ship, and point the threat towards it
         ship_id = self.rng.choice([0, 1])
         ship_loc = self.ship_1_location if ship_id == 0 else self.ship_2_location

@@ -24,8 +24,16 @@ from .utils import distance, get_weapon_launch_info
 
 
 class Weapon:
-    def __init__(self, ship_location: Tuple[float, float], ship_orientation: float, weapon_speed: float,
-                 threat: Threat, weapon_type: int, weapon_id: str, rng: np.random.RandomState):
+    def __init__(
+        self,
+        ship_location: Tuple[float, float],
+        ship_orientation: float,
+        weapon_speed: float,
+        threat: Threat,
+        weapon_type: int,
+        weapon_id: str,
+        rng: np.random.RandomState,
+    ):
         """
         A weapon for neutralizing threats.
         :param ship_location: (float, float) Ship of origin location in meters.
@@ -44,11 +52,12 @@ class Weapon:
         self.threat = threat
         self.weapon_type = weapon_type
         self.weapon_id = weapon_id
-        launch_info = get_weapon_launch_info(self.threat.location, self.ship_location, self.threat.velocity,
-                                             weapon_speed)
-        self.timer = launch_info['time_to_intercept']
-        self.velocity = launch_info['weapon_velocity']
-        self.intercept_point = launch_info['intercept_point']
+        launch_info = get_weapon_launch_info(
+            self.threat.location, self.ship_location, self.threat.velocity, weapon_speed
+        )
+        self.timer = launch_info["time_to_intercept"]
+        self.velocity = launch_info["weapon_velocity"]
+        self.intercept_point = launch_info["intercept_point"]
         self.location = copy.deepcopy(self.ship_location)
 
         distance_to_threat = distance(ship_location, threat.location)
