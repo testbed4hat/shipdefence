@@ -301,7 +301,7 @@ class Channel(MutableGameObject):
         # broadcasting the message to all participants
         for role in self.participants:
             # Assuming all the participants read the message immediately, except the sender
-            if role != message.sender:
+            if role != message.sender and role.serial not in IGNORED_ROLE_IDS:
                 role.read_message(message.message_id, self.curr_version_id)
 
 
@@ -586,8 +586,9 @@ class ShipDefenceWorld:
             wa_msg = WAMessage(channel, role, details, msg.message)
             self.process_WA_message(wa_msg)
 
-    def process_WA_message(self, msg):
+    def process_WA_message(self, msg: WAMessage):
         # Generate bindings for the various steps in the message's lifecyle
+
         # 1. Targetting suggesting
         asset = self.find_asset_by_name(msg.asset_name)
         target = self.find_asset_by_id(msg.target_id)
@@ -604,6 +605,11 @@ class ShipDefenceWorld:
                 msg.weapon,  # weapon
             )
         )
+        # 1.a. Participants "read" the suggestion, except the sender
+        for role in msg.channel.participants:
+            if role != msg.sender and role.serial not in IGNORED_ROLE_IDS:
+                role.read_message(msg.message_id, msg.channel.serial)
+
         # 2. Amendments if any
         if "feedback" in msg.history:
             previous_id = current_id
@@ -614,7 +620,7 @@ class ShipDefenceWorld:
                 current_id = timestamp.timestamp()
                 m_action = p_action.match(feedback.feedback)
                 wa_type = (
-                    m_action.group("action") + "WeaponAssignment"
+                    add_ed_to_verbs(m_action.group("action")) + "WeaponAssignment"
                     if m_action is not None
                     else "UndeterminedWeaponAssignment"
                 )
@@ -812,6 +818,10 @@ def add_timestamp_from_id(msg):
 
 def escaping_newline_characters(value: str) -> str:
     return value.replace("\n", "\\n") if value is not None and isinstance(value, str) else value
+
+
+def add_ed_to_verbs(verb: str) -> str:
+    return verb + "d" if verb.endswith("e") else verb + "ed"
 
 
 if __name__ == "__main__":
