@@ -385,6 +385,23 @@ class ShipDefenceWorld:
             if force_data.uniqid not in self.forces:
                 logger.warning("New force seen: %s", force_data.uniqid)
 
+    def new_turn(self, turn_number: int):
+        logger.info("[New Turn: %d] – Started at %s", turn_number, self.timestamp)
+
+        # resetting the ephemeral states that should not persist across game turns
+        self.missile_seen = defaultdict(set)
+
+        self.turn_numer = turn_number
+        logger.debug("> Updating perceptions of all forces")
+        for force in self.forces.values():
+            self.bindings.extend(force.perception_update_bindings())
+            force.reset_perceptions()  # reset it in anticipation for changes in this turn
+
+    def update_phase(self, phase: str):
+        logger.info("[> Phase: %s] – %s", phase, self.timestamp)
+        self.phase = phase
+        self.adjudication_start_timestamp = self.timestamp if phase == "adjudication" else None
+
     def add_channel(self, channel_data):
         participants: list[Role] = list()
         for pdata in channel_data.participants:
@@ -425,22 +442,23 @@ class ShipDefenceWorld:
         force.add_role(role)
         self.record_bindings(role.bindings)
 
-    def new_turn(self, turn_number: int):
-        logger.info("[New Turn: %d] – Started at %s", turn_number, self.timestamp)
-
-        # resetting the ephemeral states that should not persist across game turns
-        self.missile_seen = defaultdict(set)
-
-        self.turn_numer = turn_number
-        logger.debug("> Updating perceptions of all forces")
+    def find_asset_by_name(self, name: str | None) -> Asset | None:
+        if name is None:
+            return None
         for force in self.forces.values():
-            self.bindings.extend(force.perception_update_bindings())
-            force.reset_perceptions()  # reset it in anticipation for changes in this turn
+            for asset in force.assets.values():
+                if asset.name == name:
+                    return asset
+        return None
 
-    def update_phase(self, phase: str):
-        logger.info("[> Phase: %s] – %s", phase, self.timestamp)
-        self.phase = phase
-        self.adjudication_start_timestamp = self.timestamp if phase == "adjudication" else None
+    def find_asset_by_id(self, asset_id: str | None) -> Asset | None:
+        if asset_id is None:
+            return None
+        for force in self.forces.values():
+            for asset in force.assets.values():
+                if asset.serial == asset_id:
+                    return asset
+        return None
 
     def end_turn_update(self, doc):
         details: dict = doc.get("details")
@@ -546,6 +564,112 @@ class ShipDefenceWorld:
             for asset in perceptions:
                 force.add_perception(asset)
 
+    def process_custom_message(self, msg: dict):
+        details: dict = msg.get("details")
+        sender: dict = details.get("from")
+        channel_id = details.get("channel")
+        channel: Channel = self.channels.get(channel_id)
+        if channel is None:
+            logger.warning("Cannot found channel <%s>. Message will not be recorded.", channel_id)
+            return
+        role_id = sender.get("roleId")
+        # TODO: Hack for legacy malformed WA messages due to the wrong template (which have already been fixed)
+        if "roleId" in role_id:
+            role_id = role_id.get("roleId")
+        role: Role = self.roles.get(role_id, None)
+
+        if msg.templateId == "chat":
+            message = ChatMessage(channel, role, details, msg.message)
+            # TODO: temporarily turning off the message recording - reinstate this later
+            # channel.send_message(message)
+        elif msg.templateId == "WA Message":
+            wa_msg = WAMessage(channel, role, details, msg.message)
+            self.process_WA_message(wa_msg)
+
+    def process_WA_message(self, msg):
+        # Generate bindings for the various steps in the message's lifecyle
+        # 1. Targetting suggesting
+        asset = self.find_asset_by_name(msg.asset_name)
+        target = self.find_asset_by_id(msg.target_id)
+        current_id = msg.message_id
+
+        self.record_bindings(
+            TargetSuggestionBinding(
+                "targeting_suggestion",  # targeting_suggestion
+                msg.sender.curr_version_id,  # sender
+                current_id,  # wa
+                "AISuggestion" if msg.sender.serial == "ai-assistant" else "ManualAssignment",  # wa_type
+                asset.curr_version_id,  # asset
+                target.curr_version_id,  # target
+                msg.weapon,  # weapon
+            )
+        )
+        # 2. Amendments if any
+        if "feedback" in msg.history:
+            previous_id = current_id
+            p_action = re.compile(r"^\[(?P<action>\w+)\]")
+            for feedback in msg.history.feedback:
+                role = self.roles.get(feedback.fromId)
+                timestamp = datetime.fromisoformat(feedback.date)
+                current_id = timestamp.timestamp()
+                m_action = p_action.match(feedback.feedback)
+                wa_type = (
+                    m_action.group("action") + "WeaponAssignment"
+                    if m_action is not None
+                    else "UndeterminedWeaponAssignment"
+                )
+                self.record_bindings(
+                    TargetingAmendmentBinding(
+                        "targeting_amendment",  # isA
+                        role.curr_version_id,  # role
+                        previous_id,  # wa_0
+                        current_id,  # wa_1
+                        wa_type,  # wa_type
+                        asset.curr_version_id,  # asset
+                        target.curr_version_id,  # target
+                        msg.weapon,  # weapon
+                    )
+                )
+
+            if msg.history.status == "Released":
+                # 3. Remember WA message ID for the assignment
+                self.actions[(asset.serial, msg.weapon, target.serial)].append(current_id)
+                logger.debug("Weapon to release (%s): %s", current_id, (asset.serial, msg.weapon, target.serial))
+
+    def update_feature(self, feature) -> Asset | None:
+        """
+        :param feature: dict
+        :return: the asset that was updated or None if nothing was updated.
+        """
+
+        # copy the properties dict
+        properties = dict(feature.properties)
+
+        _type = properties.pop("_type")
+        if _type != "MilSymRenderer":
+            # We only process MilSymRenderer objects in this scenario
+            return None
+
+        pos_lon, pos_lat = feature.geometry.coordinates
+        force_id: str = properties.pop("force")
+        feature_id: str = properties.pop("id")
+        force = self.forces.get(force_id)
+
+        if feature_id.startswith("ship-"):
+            asset = self.update_ship(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+        else:
+            # must be a missile; add it to the list of missiles seen in this round
+            self.missile_seen[force_id].add(feature_id)
+            # determine weapon or threat
+            if feature_id.startswith("weapon_"):
+                asset = self.update_weapon(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+            else:
+                asset = self.update_threat(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+
+        # TODO: remove missile(s) not seen in this round
+
+        return asset
+
     def update_ship(self, force: Force, ship_id: str, position, properties: dict) -> Asset | None:
         if ship_id not in force.assets:
             ship = Asset(ship_id, properties["label"], "Destroyer", force, position)
@@ -556,24 +680,6 @@ class ShipDefenceWorld:
         else:
             # TODO: update any changes to the ship
             return None
-
-    def find_asset_by_name(self, name: str | None) -> Asset | None:
-        if name is None:
-            return None
-        for force in self.forces.values():
-            for asset in force.assets.values():
-                if asset.name == name:
-                    return asset
-        return None
-
-    def find_asset_by_id(self, asset_id: str | None) -> Asset | None:
-        if asset_id is None:
-            return None
-        for force in self.forces.values():
-            for asset in force.assets.values():
-                if asset.serial == asset_id:
-                    return asset
-        return None
 
     def update_threat(self, force: Force, missile_id: str, position, properties: dict) -> Missile:
         if missile_id not in force.assets:
@@ -654,112 +760,6 @@ class ShipDefenceWorld:
                 )
             )
         return missile
-
-    def update_feature(self, feature) -> Asset | None:
-        """
-        :param feature: dict
-        :return: the asset that was updated or None if nothing was updated.
-        """
-
-        # copy the properties dict
-        properties = dict(feature.properties)
-
-        _type = properties.pop("_type")
-        if _type != "MilSymRenderer":
-            # We only process MilSymRenderer objects in this scenario
-            return None
-
-        pos_lon, pos_lat = feature.geometry.coordinates
-        force_id: str = properties.pop("force")
-        feature_id: str = properties.pop("id")
-        force = self.forces.get(force_id)
-
-        if feature_id.startswith("ship-"):
-            asset = self.update_ship(force, feature_id, f"{pos_lat},{pos_lon}", properties)
-        else:
-            # must be a missile; add it to the list of missiles seen in this round
-            self.missile_seen[force_id].add(feature_id)
-            # determine weapon or threat
-            if feature_id.startswith("weapon_"):
-                asset = self.update_weapon(force, feature_id, f"{pos_lat},{pos_lon}", properties)
-            else:
-                asset = self.update_threat(force, feature_id, f"{pos_lat},{pos_lon}", properties)
-
-        # TODO: remove missile(s) not seen in this round
-
-        return asset
-
-    def process_WA_message(self, msg):
-        # Generate bindings for the various steps in the message's lifecyle
-        # 1. Targetting suggesting
-        asset = self.find_asset_by_name(msg.asset_name)
-        target = self.find_asset_by_id(msg.target_id)
-        current_id = msg.message_id
-
-        self.record_bindings(
-            TargetSuggestionBinding(
-                "targeting_suggestion",  # targeting_suggestion
-                msg.sender.curr_version_id,  # sender
-                current_id,  # wa
-                "AISuggestion" if msg.sender.serial == "ai-assistant" else "ManualAssignment",  # wa_type
-                asset.curr_version_id,  # asset
-                target.curr_version_id,  # target
-                msg.weapon,  # weapon
-            )
-        )
-        # 2. Amendments if any
-        if "feedback" in msg.history:
-            previous_id = current_id
-            p_action = re.compile(r"^\[(?P<action>\w+)\]")
-            for feedback in msg.history.feedback:
-                role = self.roles.get(feedback.fromId)
-                timestamp = datetime.fromisoformat(feedback.date)
-                current_id = timestamp.timestamp()
-                m_action = p_action.match(feedback.feedback)
-                wa_type = (
-                    m_action.group("action") + "WeaponAssignment"
-                    if m_action is not None
-                    else "UndeterminedWeaponAssignment"
-                )
-                self.record_bindings(
-                    TargetingAmendmentBinding(
-                        "targeting_amendment",  # isA
-                        role.curr_version_id,  # role
-                        previous_id,  # wa_0
-                        current_id,  # wa_1
-                        wa_type,  # wa_type
-                        asset.curr_version_id,  # asset
-                        target.curr_version_id,  # target
-                        msg.weapon,  # weapon
-                    )
-                )
-
-            if msg.history.status == "Released":
-                # 3. Remember WA message ID for the assignment
-                self.actions[(asset.serial, msg.weapon, target.serial)].append(current_id)
-                logger.debug("Weapon to release (%s): %s", current_id, (asset.serial, msg.weapon, target.serial))
-
-    def process_custom_message(self, msg: dict):
-        details: dict = msg.get("details")
-        sender: dict = details.get("from")
-        channel_id = details.get("channel")
-        channel: Channel = self.channels.get(channel_id)
-        if channel is None:
-            logger.warning("Cannot found channel <%s>. Message will not be recorded.", channel_id)
-            return
-        role_id = sender.get("roleId")
-        # TODO: Hack for legacy malformed WA messages due to the wrong template (which have already been fixed)
-        if "roleId" in role_id:
-            role_id = role_id.get("roleId")
-        role: Role = self.roles.get(role_id, None)
-
-        if msg.templateId == "chat":
-            message = ChatMessage(channel, role, details, msg.message)
-            # TODO: temporarily turning off the message recording - reinstate this later
-            # channel.send_message(message)
-        elif msg.templateId == "WA Message":
-            wa_msg = WAMessage(channel, role, details, msg.message)
-            self.process_WA_message(wa_msg)
 
     def run(self):
         # load messages from the Serge server
