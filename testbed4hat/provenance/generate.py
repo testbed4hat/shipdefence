@@ -16,6 +16,7 @@ from ..testbed4hat.serge import SergeGame
 
 
 logger = logging.getLogger(__name__)
+IGNORED_ROLE_IDS = {"umpire", "ai-assistant"}  # the role we don't want to record provenance for
 
 
 def ensure_valid_localname(value: str) -> str:
@@ -144,7 +145,9 @@ class Asset(MutableGameObject):
 
 
 class Missile(Asset):
-    def __init__(self, asset_id, name, missile_type, force, position, velocity, target_id: str, parent: Asset = None):
+    def __init__(
+        self, asset_id, name, missile_type, force, position, velocity, target_id: str | None, parent: Asset = None
+    ):
         # threat, threat_type, fserial, force, force_name, name, position, velocity, target
         super().__init__(asset_id, name, missile_type, force, position)
         self.speed = velocity
@@ -214,29 +217,35 @@ class Force(MutableGameObject):
         self.perceptions = set()
 
     def add_perception(self, asset):
-        if asset.serial not in self.assets:
-            # only adding perception of other forces' assets
-            self.perceptions.add(asset)
+        self.perceptions.add(asset)
 
     def perception_update_bindings(self):
         # returns all perception_update bindings when a new turn is started
-        return [
-            PerceptionUpdateBinding(
-                "perception_update",
-                role.serial,  # rserial
-                role.prev_version_id,  # role0
-                role.curr_version_id,  # role1
-                role.role_type,  # role_type
-                self.serial,  # fserial
-                self.prev_version_id,  # force0
-                self.curr_version_id,  # force1
-                self.name,  # force_name
-                role.name,  # name
-                asset.curr_version_id,  # asset
-            )
-            for role in self.roles.values()
-            for asset in self.perceptions
-        ]
+        if self.perceptions:
+            # there are something new this force is going to "see", create a new version for each force members
+            for role in self.roles.values():
+                role.create_new_version()
+            return [
+                PerceptionUpdateBinding(
+                    "perception_update",
+                    role.serial,  # rserial
+                    role.prev_version_id,  # role0
+                    role.curr_version_id,  # role1
+                    role.role_type,  # role_type
+                    self.serial,  # fserial
+                    self.prev_version_id,  # force0
+                    self.curr_version_id,  # force1
+                    self.name,  # force_name
+                    role.name,  # name
+                    asset.curr_version_id,  # asset
+                )
+                for role in self.roles.values()
+                for asset in self.perceptions
+                if role.serial not in IGNORED_ROLE_IDS
+            ]
+        else:
+            # nothing to update
+            return []
 
     @property
     def bindings(self) -> ForceBinding:
@@ -426,6 +435,7 @@ class ShipDefenceWorld:
         logger.debug("> Updating perceptions of all forces")
         for force in self.forces.values():
             self.bindings.extend(force.perception_update_bindings())
+            force.reset_perceptions()  # reset it in anticipation for changes in this turn
 
     def update_phase(self, phase: str):
         logger.info("[> Phase: %s] – %s", phase, self.timestamp)
@@ -519,21 +529,33 @@ class ShipDefenceWorld:
         # self.end_turn_update(msg) ??
 
     def process_mapping_message(self, msg):
+        channel_id = msg.details.channel
+        channel: Channel = self.channels.get(channel_id)
+        forces: set[Force] = set([participant.force for participant in channel.participants])
+        # list of visible features in this map update
+        perceptions: set[Asset] = set()
         features = msg.featureCollection.features
         for feature in features:
             # only process "Point" features
             if feature.geometry.type == "Point":
-                self.update_feature(feature)
+                asset = self.update_feature(feature)
+                if asset is not None:
+                    perceptions.add(asset)
+        # recorded the visibility
+        for force in forces:
+            for asset in perceptions:
+                force.add_perception(asset)
 
-    def update_ship(self, force: Force, ship_id: str, position, properties: dict):
+    def update_ship(self, force: Force, ship_id: str, position, properties: dict) -> Asset | None:
         if ship_id not in force.assets:
             ship = Asset(ship_id, properties["label"], "Destroyer", force, position)
             self.assets[ship.serial] = ship
             force.add_asset(ship)
             self.record_bindings(ship.bindings)
+            return ship
         else:
             # TODO: update any changes to the ship
-            pass
+            return None
 
     def find_asset_by_name(self, name: str | None) -> Asset | None:
         if name is None:
@@ -553,7 +575,7 @@ class ShipDefenceWorld:
                     return asset
         return None
 
-    def update_threat(self, force: Force, missile_id: str, position, properties: dict):
+    def update_threat(self, force: Force, missile_id: str, position, properties: dict) -> Missile:
         if missile_id not in force.assets:
             # create the Missile
             missile_type = properties.get("Detected type", "UndeterminedMissile")
@@ -581,8 +603,9 @@ class ShipDefenceWorld:
                     properties["turn"], properties.get("heath", None), position, None, properties.get("Velocity", None)
                 )
             )
+        return missile
 
-    def update_weapon(self, force: Force, missile_id: str, position, properties: dict):
+    def update_weapon(self, force: Force, missile_id: str, position, properties: dict) -> Missile:
         if missile_id not in self.assets:
             # create the Missile
             missile_type = properties.get("type", "UndeterminedMissile")
@@ -630,15 +653,21 @@ class ShipDefenceWorld:
                     properties["turn"], properties.get("heath", None), position, None, properties.get("Velocity", None)
                 )
             )
+        return missile
 
-    def update_feature(self, feature):
+    def update_feature(self, feature) -> Asset | None:
+        """
+        :param feature: dict
+        :return: the asset that was updated or None if nothing was updated.
+        """
+
         # copy the properties dict
         properties = dict(feature.properties)
 
         _type = properties.pop("_type")
         if _type != "MilSymRenderer":
             # We only process MilSymRenderer objects in this scenario
-            return
+            return None
 
         pos_lon, pos_lat = feature.geometry.coordinates
         force_id: str = properties.pop("force")
@@ -646,18 +675,19 @@ class ShipDefenceWorld:
         force = self.forces.get(force_id)
 
         if feature_id.startswith("ship-"):
-            self.update_ship(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+            asset = self.update_ship(force, feature_id, f"{pos_lat},{pos_lon}", properties)
         else:
             # must be a missile; add it to the list of missiles seen in this round
             self.missile_seen[force_id].add(feature_id)
             # determine weapon or threat
             if feature_id.startswith("weapon_"):
-                self.update_weapon(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+                asset = self.update_weapon(force, feature_id, f"{pos_lat},{pos_lon}", properties)
             else:
-                self.update_threat(force, feature_id, f"{pos_lat},{pos_lon}", properties)
+                asset = self.update_threat(force, feature_id, f"{pos_lat},{pos_lon}", properties)
 
         # TODO: remove missile(s) not seen in this round
-        pass
+
+        return asset
 
     def process_WA_message(self, msg):
         # Generate bindings for the various steps in the message's lifecyle
