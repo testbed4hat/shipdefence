@@ -142,13 +142,16 @@ class HatEnv(gym.Env):
         self.ship_1 = None
         self.ship_2 = None
         self.threats = None
-        self.weapons = None
+        self.weapons: list[Weapon] = list()
         self.time_step = None
         self.time_seconds = None
-        self.weapon_counter = None
-        self.threat_counter = None
+        self.weapon_counter: int = 0
+        self.threat_counter: int = 0
         self.action_queue = None
         self.step_messages = None
+
+        # WIP: Refactoring ship_1 and ship_2 into a list of ships to clean up matching them with correct ship numbers
+        self.ships: list[Ship] = list()
 
     def _warn(self, warning_text) -> None:
         """Convenience function for printing warning text only when verbose is True."""
@@ -353,21 +356,15 @@ class HatEnv(gym.Env):
     def _make_observation(
         self, launches: list[WeaponLaunchInfo], failures: dict[tuple[int, str, int], WeaponLaunchInfo]
     ) -> dict:
-        # get ship 1 observation
-        ship_1_obs = {
-            "location": self.ship_1.location,
-            "threats": [self._threat_observation(0, threat) for threat_id, threat in self.threats.items()],
-            "weapons": [self._weapon_observation(0, weapon) for weapon in self.weapons],
-            "inventory": self.ship_1.weapon_inventory(),
-        }
-
-        # get ship 2 observation
-        ship_2_obs = {
-            "location": self.ship_2.location,
-            "threats": [self._threat_observation(1, threat) for threat_id, threat in self.threats.items()],
-            "weapons": [self._weapon_observation(1, weapon) for weapon in self.weapons],
-            "inventory": self.ship_2.weapon_inventory(),
-        }
+        ship_observations = [
+            {
+                "location": ship.location,
+                "threats": [self._threat_observation(ship_id, threat) for threat_id, threat in self.threats.items()],
+                "weapons": [self._weapon_observation(ship_id, weapon) for weapon in self.weapons],
+                "inventory": ship.weapon_inventory(),
+            }
+            for ship_id, ship in enumerate(self.ships)
+        ]
 
         # Aggregate action (weapon) information
         launched = [l_info.to_obs() for l_info in launches]
@@ -376,8 +373,8 @@ class HatEnv(gym.Env):
         # Add any additional messages collected during the step
         messages = [m.to_string() for m in self.step_messages]
         return {
-            "ship_1": ship_1_obs,
-            "ship_2": ship_2_obs,
+            "ship_1": ship_observations[0],
+            "ship_2": ship_observations[1],
             "launched": launched,
             "failed": failed,
             "messages": messages,
@@ -450,6 +447,7 @@ class HatEnv(gym.Env):
             self.weapon_1_speed,
             self.rng,
         )
+        self.ships = [self.ship_1, self.ship_2]
 
         if self.verbose:
             # Note: Convenience message, can be deleted if no longer useful
