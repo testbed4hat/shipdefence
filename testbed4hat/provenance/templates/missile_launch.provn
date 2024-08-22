@@ -19,6 +19,7 @@ document
     )
     wasDerivedFrom(var:missile_1, var:missile_0)
     wasAttributedTo(var:missile_1, var:ship)
+    wasDerivedFrom(var:missile_1, var:wa)
 
 
   endBundle

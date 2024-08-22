@@ -5,6 +5,7 @@ PYPROVCONVERT:=prov-convert
 OUTPUTS:=outputs
 
 GAME_ID:=wargame-lzudwjdd
+TEMPLATE_INPUTS:=$(wildcard templates/*.provn) $(wildcard templates/*.json)
 
 # Generic rules to convert PROV-N to TTL or to SVG/PDF formats
 %.json: %.provn
@@ -22,9 +23,9 @@ GAME_ID:=wargame-lzudwjdd
 %.png: %.json
 	$(PYPROVCONVERT) -f png $< $@
 
-.PHONY: provenance clean
+.PHONY: provenance clean test
 
-$(OUTPUTS)/generated/bin/prov4serge: templates/config.json
+$(OUTPUTS)/generated/bin/prov4serge: $(TEMPLATE_INPUTS)
 	$(PROVCONVERT) -templatebuilder templates/config.json
 	cd $(OUTPUTS)/generated/java/templates; mvn clean install
 
@@ -39,3 +40,6 @@ provenance: $(OUTPUTS)/provenance/$(GAME_ID).provn $(OUTPUTS)/provenance/$(GAME_
 
 clean:
 	rm -rf $(OUTPUTS)/provenance/*
+
+test:
+	@echo $(TEMPLATE_INPUTS)

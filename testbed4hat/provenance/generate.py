@@ -581,7 +581,7 @@ class ShipDefenceWorld:
         if msg.templateId == "chat":
             message = ChatMessage(channel, role, details, msg.message)
             # TODO: temporarily turning off the message recording - reinstate this later
-            # channel.send_message(message)
+            channel.send_message(message)
         elif msg.templateId == "WA Message":
             wa_msg = WAMessage(channel, role, details, msg.message)
             self.process_WA_message(wa_msg)
