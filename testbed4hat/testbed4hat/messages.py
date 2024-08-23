@@ -15,12 +15,13 @@
 
 class WeaponLaunchInfo:
     def __init__(self, launched: bool, ship_id: int, threat_id: str, weapon_type: int, reason: str,
-                 weapon_id: str = None):
+                 p_k: float = None, weapon_id: str = None):
         assert isinstance(launched, bool)
         assert isinstance(ship_id, int)
         assert isinstance(threat_id, str)
         assert isinstance(weapon_type, int)
         assert isinstance(reason, str)
+        assert isinstance(p_k, float) or p_k is None
         if weapon_id is not None:
             assert isinstance(weapon_id, str)
         self.launched = launched
@@ -28,6 +29,7 @@ class WeaponLaunchInfo:
         self.threat_id = threat_id
         self.weapon_type = weapon_type
         self.reason = reason
+        self.p_k = p_k
         self.weapon_id = weapon_id
 
     def to_dict(self):

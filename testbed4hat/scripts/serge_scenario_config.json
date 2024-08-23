@@ -1,0 +1,113 @@
+{
+    "config": null,
+    "seed": 1337,
+    "seconds_per_timestep": 60,
+    "weapon_0_speed": 125.0,
+    "weapon_1_speed": 150.0,
+    "weapon_0_reload_time": 1,
+    "weapon_1_reload_time": 1,
+    "num_ship_0_weapon_0": 10,
+    "num_ship_0_weapon_1": 10,
+    "num_ship_1_weapon_0": 10,
+    "num_ship_1_weapon_1": 10,
+    "min_distance_between_ships": 1000,
+    "max_distance_between_ships": 5000,
+    "hard_ship_0_location": [
+        -250,
+        -200
+    ],
+    "hard_ship_1_location": [
+        250,
+        150
+    ],
+    "wasted_weapon_reward": -0.01,
+    "target_hit_reward": 2.0,
+    "max_episode_time_in_seconds": 600,
+    "verbose": false,
+    "render_env": false,
+    "zoom": 1,
+    "screen_width": 1600,
+    "screen_height": 1200,
+    "threat_0_base_size": 200,
+    "threat_1_base_size": 150,
+    "threat_0_color": [
+        255,
+        0,
+        0
+    ],
+    "threat_1_color": [
+        255,
+        165,
+        0
+    ],
+    "draw_threat_spawn_region": false,
+    "weapon_0_base_size": 115,
+    "weapon_1_base_size": 115,
+    "weapon_0_color": [
+        128,
+        128,
+        128
+    ],
+    "weapon_1_color": [
+        255,
+        192,
+        0
+    ],
+    "ship_base_length": 600,
+    "ship_base_width": 200,
+    "ship_0_color": [
+        0,
+        255,
+        0
+    ],
+    "ship_1_color": [
+        0,
+        0,
+        255
+    ],
+    "font_size": 18,
+    "font_color": [
+        0,
+        0,
+        0
+    ],
+    "display_threat_ids": true,
+    "threat_0_kill_radius": 1000,
+    "threat_1_kill_radius": 1000,
+    "threat_0_speed": 138.88888888888889,
+    "threat_1_speed": 152.77777777777777,
+    "threat_0_kill_prob": 0.95,
+    "threat_1_kill_prob": 0.95,
+    "min_threat_distance": 30000,
+    "max_threat_distance": 40000,
+    "schedule": {
+        "10": [
+            0,
+            1
+        ],
+        "50": [
+            1,
+            0
+        ],
+        "70": [
+            1,
+            0
+        ],
+        "150": [
+            1,
+            1
+        ],
+        "195": [
+            1,
+            0
+        ],
+        "241": [
+            0,
+            1
+        ],
+        "280": [
+            1,
+            1
+        ]
+    }
+}

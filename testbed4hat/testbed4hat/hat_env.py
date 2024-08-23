@@ -177,8 +177,8 @@ class HatEnv(gym.Env):
         if isinstance(weapon, Weapon):
             self.weapons.append(weapon)
             self.weapon_counter += 1
-            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST", p_k=weapon.get_p_kill(),
-                                    weapon_id=weapon_id)
+            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST",
+                                    p_k=weapon.get_p_kill(), weapon_id=weapon_id)
         else:
             return WeaponLaunchInfo(False, ship_id, threat_id, weapon_type, weapon)
 
