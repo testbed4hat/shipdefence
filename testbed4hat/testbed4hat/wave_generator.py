@@ -30,8 +30,8 @@ class WaveGenerator:
 
     def __init__(
         self,
+        ship_0_location: tuple[float, float],
         ship_1_location: tuple[float, float],
-        ship_2_location: tuple[float, float],
         threat_0_kill_radius: float,
         threat_1_kill_radius: float,
         threat_0_speed: float = DEFAULT_THREAT_0_SPEED,
@@ -46,8 +46,8 @@ class WaveGenerator:
         """
         Object responsible for generating waves of threats for the HAT environment simulation. Waves are specified per
         second in the simulation. A max of one threat type per second allowed.
-        :param ship_1_location: (float, float) Ship 1 location
-        :param ship_2_location: (float, float) Ship 2 location
+        :param ship_0_location: (float, float) Ship 1 location
+        :param ship_1_location: (float, float) Ship 2 location
         :param threat_0_kill_radius: (float) How close threat 0 needs to be to kill a target ship
         :param threat_1_kill_radius: (float) How close threat 1 needs to be to kill a target ship
         :param threat_0_speed: (float) Speed of threat 0 in m/s
@@ -70,8 +70,8 @@ class WaveGenerator:
         :param seed: (int) Random seed
         """
 
+        self.ship_0_location = ship_0_location
         self.ship_1_location = ship_1_location
-        self.ship_2_location = ship_2_location
         self.threat_0_kill_radius = threat_0_kill_radius
         self.threat_1_kill_radius = threat_1_kill_radius
 
@@ -121,11 +121,11 @@ class WaveGenerator:
 
         # pick a ship, and point the threat towards it
         ship_id = self.rng.choice([0, 1])
-        ship_loc = self.ship_1_location if ship_id == 0 else self.ship_2_location
+        ship_loc = self.ship_0_location if ship_id == 0 else self.ship_1_location
         threat_angle = np.arctan2(ship_loc[1] - position[1], ship_loc[0] - position[0])
 
         # if the threat gets too close to a closer threat when targeting the farther threat, switch targets
-        other_ship_loc = self.ship_2_location if ship_id == 0 else self.ship_1_location
+        other_ship_loc = self.ship_1_location if ship_id == 0 else self.ship_0_location
         other_ship_angle = np.arctan2(other_ship_loc[1] - position[1], other_ship_loc[0] - position[0])
         if abs(other_ship_angle - threat_angle) <= 3 * DEGREE_IN_RADIANS:
             if distance(other_ship_loc, position) < distance(ship_loc, position):
