@@ -92,13 +92,20 @@ class WaveGenerator:
                 7 * 60: (1, 1),  # 7 minutes
             }
         elif schedule == "random":
-            # 40 weapons spread over a schedule of 15 minutes, only 1 of each weapon can be launched per second
-            num_threat_0 = self.rng.integers(low=20, high=40)
-            num_threat_1 = 40 - num_threat_0
-            times1 = self.rng.choice(range(60 * 15), size=num_threat_0, replace=False)
-            times2 = self.rng.choice(range(60 * 15), size=num_threat_1, replace=False)
+            # up to 50 weapons spread over a schedule of between 10 and 20 minutes, only 1 of each weapon
+            # can be launched per second
+            min_threat_0 = 10
+            max_threats = 50
+            min_time_in_min = 5
+            max_time_in_min = 10
+            num_threat_0 = self.rng.integers(low=min_threat_0, high=max_threats)
+            num_threat_1 = max_threats - num_threat_0
+
+            episode_time = int(self.rng.integers(low=min_time_in_min, high=max_time_in_min))
+            times1 = self.rng.choice(range(60 * episode_time), size=num_threat_0, replace=False)
+            times2 = self.rng.choice(range(60 * episode_time), size=num_threat_1, replace=False)
             schedule = {}
-            for t in range(60 * 15):
+            for t in range(60 * episode_time):
                 if t in times1 and t in times2:
                     schedule[t] = (1, 1)
                 elif t in times1:

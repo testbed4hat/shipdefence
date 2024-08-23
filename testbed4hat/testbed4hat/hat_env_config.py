@@ -23,6 +23,7 @@ class HatEnvConfig:
     """Configurate object of HAT environment"""
     SECONDS_PER_TIMESTEP_RANGE = (1, 60 * 60)
     WASTED_REWARD_RANGE = (-1, 0)
+    TARGET_HIT_REWARD_RANGE = (0, 5)
     ZOOM_RANGE = (0.5, 5)
     SCREEN_SIZE_RANGE = (400, 2000)
     THREAT_BASE_SIZE_RANGE = (150, 300)
@@ -57,6 +58,7 @@ class HatEnvConfig:
         "wasted_weapon_reward": "The reward returned by the environment for each wasted weapon. A "
                                 "weapon is considered 'wasted' if the threat it targeted was "
                                 "destroyed before the weapon hit it",
+        "target_hit_reward": "The reward returned by the environment for eliminating a threat with a weapon.",
         "max_episode_time_in_seconds": "The total time represented in the simulation (not real-time).",
         "verbose": "Print optional information about the environment, including warnings.",
         "render_env": "Whether to render the environment using PyGame or not.",
@@ -106,6 +108,7 @@ class HatEnvConfig:
         "min_distance_between_ships": (int, float),
         "max_distance_between_ships": (int, float),
         "wasted_weapon_reward": float,
+        "target_hit_reward": float,
         "max_episode_time_in_seconds": int,
         "hard_ship_0_location": (None, tuple, list),
         "hard_ship_1_location": (None, tuple, list),
@@ -159,6 +162,7 @@ class HatEnvConfig:
         self.hard_ship_0_location = None
         self.hard_ship_1_location = None
         self.wasted_weapon_reward = -0.01
+        self.target_hit_reward = 2.0
         self.max_episode_time_in_seconds = 25 * 60
         self.verbose = True
 
@@ -236,6 +240,7 @@ class HatEnvConfig:
         """Print a text description of this object"""
         PARAMS_WITH_RANGES = {"seconds_per_timestep": self.SECONDS_PER_TIMESTEP_RANGE,
                               "wasted_weapon_reward": self.WASTED_REWARD_RANGE,
+                              "target_hit_reward": self.TARGET_HIT_REWARD_RANGE,
                               "zoom": self.ZOOM_RANGE,
                               "screen_width": self.SCREEN_SIZE_RANGE,
                               "screen_height": self.SCREEN_SIZE_RANGE,
@@ -296,6 +301,8 @@ class HatEnvConfig:
                 assert self.HARD_SHIP_LOCATION_RANGE[0] <= coord <= self.HARD_SHIP_LOCATION_RANGE[1]
         assert isinstance(self.wasted_weapon_reward, float)
         assert self.WASTED_REWARD_RANGE[0] <= self.wasted_weapon_reward <= self.WASTED_REWARD_RANGE[1]
+        assert isinstance(self.target_hit_reward, float)
+        assert self.TARGET_HIT_REWARD_RANGE[0] <= self.target_hit_reward <= self.TARGET_HIT_REWARD_RANGE[1]
         assert isinstance(self.max_episode_time_in_seconds, int)
         assert self.MAX_TIME_RANGE[0] <= self.max_episode_time_in_seconds <= self.MAX_TIME_RANGE[1]
         assert isinstance(self.verbose, bool)

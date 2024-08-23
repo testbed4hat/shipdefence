@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import copy
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 

@@ -17,9 +17,7 @@ import json
 
 from testbed4hat.hat_env_config import HatEnvConfig
 from testbed4hat.hat_env import HatEnv
-import argparse
 import numpy as np
-import time
 from testbed4hat.heuristic_agent import HeuristicAgent
 
 

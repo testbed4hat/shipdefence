@@ -53,6 +53,7 @@ class HatEnv(gym.Env):
         self.hard_ship_0_location = self.config.hard_ship_0_location
         self.hard_ship_1_location = self.config.hard_ship_1_location
         self.wasted_weapon_reward = self.config.wasted_weapon_reward
+        self.target_hit_reward = self.config.target_hit_reward
         self.max_episode_time_in_seconds = self.config.max_episode_time_in_seconds
         self.verbose = self.config.verbose
 
@@ -176,7 +177,8 @@ class HatEnv(gym.Env):
         if isinstance(weapon, Weapon):
             self.weapons.append(weapon)
             self.weapon_counter += 1
-            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST", weapon_id=weapon_id)
+            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST", p_k=weapon.get_p_kill(),
+                                    weapon_id=weapon_id)
         else:
             return WeaponLaunchInfo(False, ship_id, threat_id, weapon_type, weapon)
 
@@ -460,11 +462,11 @@ class HatEnv(gym.Env):
 
         return self._make_observation([], {}), {}
 
-    def _reward_terminated_truncated(self, messages: list) -> tuple[Union[int, float], bool, bool]:
+    def _reward_terminated_truncated(self, messages: list, launches: list) -> tuple[Union[int, float], bool, bool]:
         """Create reward, terminated, and truncated values for a step."""
-        # if a ship dies, game over, reward = -1
+        # if a ship dies, game over, reward = -5
         if self.ship_0.is_dead() or self.ship_1.is_dead():
-            reward = -1
+            reward = -5
             terminated = True
             truncated = False
         else:
@@ -472,13 +474,23 @@ class HatEnv(gym.Env):
             truncated = self.time_seconds >= self.max_episode_time_in_seconds
             terminated = False
 
-            # reward is 1 for getting to the end without dying, 0 otherwise; minus some for wasting weapons
-            reward = 1 if truncated else 0
+            # reward is 5 for getting to the end without dying, 0 otherwise; minus some for wasting weapons
+            reward = 5 if truncated else 0
 
             # Get wasted weapon rewards this step
             for m in messages:
-                if isinstance(m, WeaponEndMessage) and not m.destroyed_target:
-                    reward += self.wasted_weapon_reward
+                if isinstance(m, WeaponEndMessage):
+                    if m.destroyed_target:
+                        # Reward for hitting a target
+                        reward += self.target_hit_reward
+                    else:
+                        reward += self.wasted_weapon_reward
+
+            for weapon in launches:
+                # Reward mapping from p_kill to reward in [-1, 1]
+                # scale weapon p_k to [-1, 1]
+                reward += 2 * weapon.p_k - 1
+
         return reward, terminated, truncated
 
     def step(self, action: list[tuple[int, int, str]]) -> ObsType:
@@ -526,7 +538,7 @@ class HatEnv(gym.Env):
 
             self.time_seconds += 1
 
-        reward, terminated, truncated = self._reward_terminated_truncated(self.step_messages)
+        reward, terminated, truncated = self._reward_terminated_truncated(self.step_messages, user_info_launches)
         info = {}
         return self._make_observation(user_info_launches, user_info_failures), reward, terminated, truncated, info
 
