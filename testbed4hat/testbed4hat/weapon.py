@@ -26,6 +26,7 @@ from .utils import distance, get_weapon_launch_info
 class Weapon:
     def __init__(
         self,
+        ship_id: int,
         ship_location: Tuple[float, float],
         ship_orientation: float,
         weapon_speed: float,
@@ -36,6 +37,7 @@ class Weapon:
     ):
         """
         A weapon for neutralizing threats.
+        :param ship_id: (int) Ship of origin.
         :param ship_location: (float, float) Ship of origin location in meters.
         :param ship_orientation: Ship of origin orientation, in degrees. (Not currently used, as PK does not depend on
             orientation in this version of the HAT environment.)
@@ -48,6 +50,7 @@ class Weapon:
         # defensive weapon, launched against a threat
         assert weapon_type == 0 or weapon_type == 1  # only two weapon types right now
 
+        self.ship_id = ship_id
         self.ship_location = np.array(ship_location).astype(float)
         self.threat = threat
         self.weapon_type = weapon_type
@@ -60,7 +63,7 @@ class Weapon:
         self.intercept_point = launch_info["intercept_point"]
         self.location = copy.deepcopy(self.ship_location)
 
-        distance_to_threat = distance(ship_location, threat.location)
+        distance_to_threat = float(distance(ship_location, threat.location))
 
         # not currently using direction for pk, but could in the future
         # direction = self._compute_angle(self.ship_location, ship_orientation, threat.location)
@@ -92,6 +95,9 @@ class Weapon:
 
     def get_kill_success(self) -> bool:
         return self.kill
+
+    def get_ship_id(self) -> int:
+        return self.ship_id
 
     def get_weapon_id(self) -> str:
         return self.weapon_id
