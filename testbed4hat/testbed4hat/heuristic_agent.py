@@ -78,8 +78,11 @@ class HeuristicAgent:
         weapon_1_intercept_info = get_weapon_launch_info(threat_location, ship_location, threat_velocity,
                                                          self.weapon_1_speed)
 
-        intercept_point_weapon_0 = weapon_0_intercept_info["intercept_point"]
-        intercept_point_weapon_1 = weapon_1_intercept_info["intercept_point"]
+        # Weapons may not be able to intercept, resulting in <None>, so set dist=0, which gives 0 prob weight
+        intercept_point_weapon_0 = (ship_location if not weapon_0_intercept_info
+                                    else weapon_0_intercept_info["intercept_point"])
+        intercept_point_weapon_1 = (ship_location if not weapon_1_intercept_info
+                                    else weapon_1_intercept_info["intercept_point"])
         dist_to_intercept_weapon_0 = float(distance(ship_location, intercept_point_weapon_0))
         dist_to_intercept_weapon_1 = float(distance(ship_location, intercept_point_weapon_1))
 
