@@ -614,8 +614,8 @@ class HatEnv(gym.Env):
         t1_kr = self.threat_1_kill_radius / self.coordinate_size_reduction
 
         # draw circles show how close a threat needs to be to kill the ship
-        pygame.draw.circle(self.screen, self.threat_0_color, (x, y), t0_kr, width=1)
-        pygame.draw.circle(self.screen, self.threat_1_color, (x, y), t1_kr, width=1)
+        pygame.draw.circle(self.screen, self.threat_0_color, (x, y), t0_kr, width=2)
+        pygame.draw.circle(self.screen, self.threat_1_color, (x, y), t1_kr, width=2)
 
     def _draw_crosshair(self, screen, color, size) -> None:
         """Put a crosshair on the screen at the (0, 0) point as a reference for the user"""
@@ -628,16 +628,18 @@ class HatEnv(gym.Env):
         pygame.draw.line(screen, color, (width // 2, height // 2 - size // 2), (width // 2, height // 2 + size // 2))
 
     def _draw_weapon_rings(self) -> None:
+        ring_width = 5
+
         # draw the inner effective radius (small, so one for each ship)
         x = (self.ship_0.location[0] / self.coordinate_size_reduction) + self.screen_width // 2
         y = (self.ship_0.location[1] / self.coordinate_size_reduction) + self.screen_height // 2
         r = self.low_pk_ring_radius / self.coordinate_size_reduction
-        pygame.draw.circle(self.screen, self.low_pk_ring_color, (x, y), r, width=1)
+        pygame.draw.circle(self.screen, self.low_pk_ring_color, (x, y), r, width=ring_width - 2)  # smaller ring
 
         x = (self.ship_1.location[0] / self.coordinate_size_reduction) + self.screen_width // 2
         y = (self.ship_1.location[1] / self.coordinate_size_reduction) + self.screen_height // 2
         r = self.low_pk_ring_radius / self.coordinate_size_reduction
-        pygame.draw.circle(self.screen, self.low_pk_ring_color, (x, y), r, width=1)
+        pygame.draw.circle(self.screen, self.low_pk_ring_color, (x, y), r, width=ring_width - 2)  # smaller ring
 
         # draw outer effective range rings for each weapon, centered at the mean position of the two ships
         x = np.mean([self.ship_0.location[0], self.ship_1.location[0]])
@@ -653,11 +655,11 @@ class HatEnv(gym.Env):
 
         # short weapon (1) outer ring
         r = self.short_pk_ring_radius / self.coordinate_size_reduction
-        pygame.draw.circle(self.screen, self.short_pk_ring_color, center, r, width=1)
+        pygame.draw.circle(self.screen, self.short_pk_ring_color, center, r, width=ring_width)
 
         # long weapon (0) outer ring
         r = self.long_pk_ring_radius / self.coordinate_size_reduction
-        pygame.draw.circle(self.screen, self.long_pk_ring_color, center, r, width=1)
+        pygame.draw.circle(self.screen, self.long_pk_ring_color, center, r, width=ring_width)
 
     def _draw_threat_spawn_region(self) -> None:
         # Draw a transparent reddish region where the threats are allowed to spawn
