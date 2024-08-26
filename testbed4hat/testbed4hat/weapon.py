@@ -58,9 +58,9 @@ class Weapon:
         launch_info = get_weapon_launch_info(
             self.threat.location, self.ship_location, self.threat.velocity, weapon_speed
         )
-        self.timer = launch_info["time_to_intercept"]
-        self.velocity = launch_info["weapon_velocity"]
-        self.intercept_point = launch_info["intercept_point"]
+        self.timer = launch_info["time_to_intercept"] if launch_info else 1
+        self.velocity = launch_info["weapon_velocity"] if launch_info else [0, 0]
+        self.intercept_point = launch_info["intercept_point"] if launch_info else ship_location
         self.location = copy.deepcopy(self.ship_location)
 
         distance_to_threat = float(distance(ship_location, threat.location))
