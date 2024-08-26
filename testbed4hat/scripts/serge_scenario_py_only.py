@@ -47,10 +47,10 @@ def run_scenario():
     config.set_parameter("schedule", threat_schedule)
     config.set_parameter("weapon_0_reload_time", 1)
     config.set_parameter("weapon_1_reload_time", 1)
-    config.set_parameter("num_ship_0_weapon_0", 10)
-    config.set_parameter("num_ship_0_weapon_1", 10)
-    config.set_parameter("num_ship_1_weapon_0", 10)
-    config.set_parameter("num_ship_1_weapon_1", 10)
+    config.set_parameter("num_ship_0_weapon_0", 20)
+    config.set_parameter("num_ship_0_weapon_1", 20)
+    config.set_parameter("num_ship_1_weapon_0", 20)
+    config.set_parameter("num_ship_1_weapon_1", 20)
     # note that the only difference between threats in the sim is their speed and displayed size
     threat_0_speed = 500.0 * 1000 / 3600  # 500 Km/hr -> m/s
     threat_1_speed = 550.0 * 1000 / 3600  # 550 Km/hr -> m/s
