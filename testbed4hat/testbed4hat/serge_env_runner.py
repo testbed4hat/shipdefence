@@ -90,6 +90,13 @@ SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
     },
 }
 
+ICONS = {
+    "Weapon0": "30030200001100000213",
+    "Weapon1": "30030200001100000212",
+    "Weapon0Destroyed": "30030240001100000213",
+    "Weapon1Destroyed": "30030240001100000212",
+}
+
 
 def geodesic_point_buffer(lat, lon, m):
     # Azimuthal equidistant projection
@@ -349,12 +356,15 @@ class SergeEnvRunner:
         weapon_dict["properties"]["label"] = weapon["weapon_id"]
         weapon_dict["properties"]["turn"] = self.turn
         weapon_dict["properties"]["type"] = self.WEAPON_INT_TO_STR[weapon["weapon_type"]]
-        # use the default status "InTheAir" if no status is provided
-        if status is not None:
+
+        if status is None:
+            # use the default status "InTheAir" if no status is provided
+            weapon_dict["properties"]["sidc"] = ICONS[f"Weapon{weapon['weapon_type']}"]
+        else:
             # the weapon is spent
             weapon_dict["properties"]["status"] = status
             weapon_dict["properties"]["health"] = 0
-            weapon_dict["properties"]["sidc"] = "30030240001100000212"
+            weapon_dict["properties"]["sidc"] = ICONS[f"Weapon{weapon['weapon_type']}Destroyed"]
         weapon_dict["properties"]["Launched by"] = serge_ship_id
         weapon_dict["properties"]["Expected ETA"] = weapon["time_left"]
         weapon_dict["properties"]["Threat Targeted"] = weapon["target_id"]
