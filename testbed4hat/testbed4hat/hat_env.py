@@ -235,6 +235,7 @@ class HatEnv(gym.Env):
         new_list = []
         for weapon in self.weapons:
             done = weapon.step()
+            weapon_obs = self._weapon_observation(weapon.ship_id, weapon)
             if done:
                 if weapon.get_kill_success():
                     targeted_threat_id = weapon.get_target_threat_id()
@@ -242,10 +243,10 @@ class HatEnv(gym.Env):
                     if targeted_threat_id in self.threats:
                         self.threats.pop(targeted_threat_id)
                         destroyed_target = True
-                    message = WeaponEndMessage(weapon.get_weapon_id(), targeted_threat_id, second, destroyed_target)
+                    message = WeaponEndMessage(weapon_obs, second, destroyed_target)
                     self.step_messages.append(message)
             elif weapon.get_target_threat_id() not in self.threats:
-                message = WeaponEndMessage(weapon.get_weapon_id(), weapon.get_target_threat_id(), second, False)
+                message = WeaponEndMessage(weapon_obs, second, False)
                 self.step_messages.append(message)
             else:
                 new_list.append(weapon)

@@ -12,10 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from testbed4hat.testbed4hat.weapon import Weapon
+
 
 class WeaponLaunchInfo:
-    def __init__(self, launched: bool, ship_id: int, threat_id: str, weapon_type: int, reason: str,
-                 p_k: float = None, weapon_id: str = None):
+    def __init__(
+        self,
+        launched: bool,
+        ship_id: int,
+        threat_id: str,
+        weapon_type: int,
+        reason: str,
+        p_k: float = None,
+        weapon_id: str = None,
+    ):
         assert isinstance(launched, bool)
         assert isinstance(ship_id, int)
         assert isinstance(threat_id, str)
@@ -37,7 +47,7 @@ class WeaponLaunchInfo:
 
     def to_obs(self):
         d = self.to_dict()
-        success = d.pop('launched')
+        success = d.pop("launched")
         if success:
             return d
         else:
@@ -65,25 +75,23 @@ class ShipDestroyedMessage:
         return self.__dict__.copy()
 
     def to_string(self):
-        return (f"Ship {self.ship_id} killed by {self.threat_id} at time {self.second} at distance "
-                f"{self.distance}.")
+        return f"Ship {self.ship_id} killed by {self.threat_id} at time {self.second} at distance " f"{self.distance}."
 
 
 class WeaponEndMessage:
-    def __init__(self, weapon_id: str, targeted_threat_id: str, second: int, destroyed_target: bool):
-        self.weapon_id = weapon_id
-        self.targeted_threat_id = targeted_threat_id
-        self.second = second
-        self.destroyed_target = destroyed_target
+    def __init__(self, weapon: dict, second: int, destroyed_target: bool):
+        self.weapon: dict = weapon
+        self.second: int = second
+        self.destroyed_target: bool = destroyed_target
 
     def to_dict(self):
         return self.__dict__.copy()
 
     def to_string(self):
         if self.destroyed_target:
-            return f"Weapon {self.weapon_id} destroyed target {self.targeted_threat_id} at time s={self.second}."
+            return f"Weapon {self.weapon['weapon_id']} destroyed target {self.weapon['target_id']} at time s={self.second}."
         else:
-            return f"Weapon {self.weapon_id} targeting {self.targeted_threat_id} was wasted, target already destroyed"
+            return f"Weapon {self.weapon['weapon_id']} targeting {self.weapon['target_id']} was wasted, target already destroyed"
 
 
 class ThreatMissMessage:

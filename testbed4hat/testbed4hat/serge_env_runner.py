@@ -10,6 +10,7 @@ from shapely.geometry import Point
 from shapely.ops import transform
 
 from serge import MSG_MAPPING_SHIPS, SergeGame
+from testbed4hat.testbed4hat.messages import WeaponEndMessage
 from testbed4hat.testbed4hat.hat_env import HatEnv
 from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from testbed4hat.testbed4hat.heuristic_agent import HeuristicAgent
@@ -50,6 +51,7 @@ WEAPON_TEMPLATE = {
         "size": "S",
         "turn": 0,
         "type": "Weapon Type",
+        "status": "InTheAir",
         "Launched by": "Ship Name",
         "Threat Targeted": "threat_id",
         "Expected ETA": "15:09",
@@ -178,7 +180,7 @@ class SergeEnvRunner:
         config.set_parameter("max_threat_distance", max_threat_distance)
 
         config.set_parameter("render_env", False)
-        config.set_parameter("verbose", False)
+        # config.set_parameter("verbose", False)
 
         # Set max time to 12 minutes
         config.set_parameter("max_episode_time_in_seconds", 10 * 60)
@@ -329,8 +331,15 @@ class SergeEnvRunner:
         # want weapon assigned type?
         return threat_dict
 
-    def _make_weapon_dict(self, ship_name: str, weapon: dict) -> dict:
+    def _make_weapon_dict(
+        self,
+        weapon: dict,
+        status: str = None,
+    ) -> dict:
         weapon_dict = deepcopy(WEAPON_TEMPLATE)
+
+        ship_id = weapon["ship_id"]
+        serge_ship_id = self.ship_0_serge_name if ship_id == 0 else self.ship_1_serge_name
         weapon_x, weapon_y = weapon["location"]
 
         # convert to Lat-Long
@@ -340,7 +349,13 @@ class SergeEnvRunner:
         weapon_dict["properties"]["label"] = weapon["weapon_id"]
         weapon_dict["properties"]["turn"] = self.turn
         weapon_dict["properties"]["type"] = self.WEAPON_INT_TO_STR[weapon["weapon_type"]]
-        weapon_dict["properties"]["Launched by"] = ship_name
+        # use the default status "InTheAir" if no status is provided
+        if status is not None:
+            # the weapon is spent
+            weapon_dict["properties"]["status"] = status
+            weapon_dict["properties"]["health"] = 0
+            weapon_dict["properties"]["sidc"] = "30030240001100000212"
+        weapon_dict["properties"]["Launched by"] = serge_ship_id
         weapon_dict["properties"]["Expected ETA"] = weapon["time_left"]
         weapon_dict["properties"]["Threat Targeted"] = weapon["target_id"]
         weapon_dict["properties"]["PK"] = weapon["probability_of_kill"]
@@ -410,9 +425,7 @@ class SergeEnvRunner:
         weapon_ids = set()
         for weapon in self.obs["ship_0"]["weapons"]:
             weapon_ids.add(weapon["weapon_id"])
-            ship_id = weapon["ship_id"]
-            serge_ship_id = self.ship_0_serge_name if ship_id == 0 else self.ship_1_serge_name
-            weapon_dict = self._make_weapon_dict(serge_ship_id, weapon)
+            weapon_dict = self._make_weapon_dict(weapon)
             weapons.append(weapon_dict)
 
         # get any weapons seen by Ship 1 but NOT ship 0 (both ships see weapons launched by each other)
@@ -420,9 +433,13 @@ class SergeEnvRunner:
             weapon_id = weapon["weapon_id"]
             if weapon_id not in weapon_ids:
                 weapon_ids.add(weapon["weapon_id"])
-                ship_id = weapon["ship_id"]
-                serge_ship_id = self.ship_0_serge_name if ship_id == 0 else self.ship_1_serge_name
-                weapon_dict = self._make_weapon_dict(serge_ship_id, weapon)
+                weapon_dict = self._make_weapon_dict(weapon)
+                weapons.append(weapon_dict)
+
+        # process game events captured in messages
+        for message in self.obs["messages"]:
+            if isinstance(message, WeaponEndMessage):
+                weapon_dict = self._make_weapon_dict(message.weapon, "Hit" if message.destroyed_target else "Missed")
                 weapons.append(weapon_dict)
 
         step_message = deepcopy(MSG_MAPPING_SHIPS)
@@ -582,6 +599,6 @@ class SergeEnvRunner:
 
 
 if __name__ == "__main__":
-    game_id = "wargame-lzudwjdd"
+    game_id = "wargame-m0p9azmu"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
