@@ -177,8 +177,9 @@ class HatEnv(gym.Env):
         if isinstance(weapon, Weapon):
             self.weapons.append(weapon)
             self.weapon_counter += 1
-            return WeaponLaunchInfo(True, ship_id, threat_id, weapon_type, "BY_REQUEST",
-                                    p_k=weapon.get_p_kill(), weapon_id=weapon_id)
+            return WeaponLaunchInfo(
+                True, ship_id, threat_id, weapon_type, "BY_REQUEST", p_k=weapon.get_p_kill(), weapon_id=weapon_id
+            )
         else:
             return WeaponLaunchInfo(False, ship_id, threat_id, weapon_type, weapon)
 
@@ -336,7 +337,7 @@ class HatEnv(gym.Env):
             "location": self.ship_0.location,
             "threats": [self._threat_observation(0, threat) for threat_id, threat in self.threats.items()],
             "weapons": [self._weapon_observation(0, weapon) for weapon in self.weapons],
-            "inventory": self.ship_0.weapon_inventory()
+            "inventory": self.ship_0.weapon_inventory(),
         }
 
         # get ship 2 observation
@@ -344,19 +345,17 @@ class HatEnv(gym.Env):
             "location": self.ship_1.location,
             "threats": [self._threat_observation(1, threat) for threat_id, threat in self.threats.items()],
             "weapons": [self._weapon_observation(1, weapon) for weapon in self.weapons],
-            "inventory": self.ship_1.weapon_inventory()
-        }        # Aggregate action (weapon) information
+            "inventory": self.ship_1.weapon_inventory(),
+        }  # Aggregate action (weapon) information
         launched = [l_info.to_obs() for l_info in launches]
         failed = [l_info.to_obs() for l_info in failures.values()]
 
-        # Add any additional messages collected during the step
-        messages = [m.to_string() for m in self.step_messages]
         return {
             "ship_0": ship_0_obs,
             "ship_1": ship_1_obs,
             "launched": launched,
             "failed": failed,
-            "messages": messages,
+            "messages": self.step_messages,
         }
 
     def reset(

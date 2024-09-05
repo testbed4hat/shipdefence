@@ -481,7 +481,7 @@ class SergeEnvRunner:
             self.serge_game.send_chat_message(text)
         # Send the rest of the messages
         for other in other_messages:
-            self.serge_game.send_chat_message(other)
+            self.serge_game.send_chat_message(other.to_string())
 
     def _process_adjudication_phase(self) -> None:
         """
