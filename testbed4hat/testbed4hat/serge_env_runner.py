@@ -418,10 +418,10 @@ class SergeEnvRunner:
             long_range_dict,  # Range circle: Long
         ]
 
-    def _build_step_message(self) -> dict:
-        # Convert the observation to a Serge message and send it to Serge
+    def _build_map_message(self) -> dict:
+        # Generate map objects for Serge from the current game observations
 
-        # get threats
+        # generating threat features
         threat_ids = set()
         threats = []
         for threat in self.obs["ship_0"]["threats"]:
@@ -436,7 +436,7 @@ class SergeEnvRunner:
                 threat_dict = self._make_threat_dict(threat)
                 threats.append(threat_dict)
 
-        # get weapons
+        # generating weapon features
         weapons = []
         weapon_ids = set()
         for weapon in self.obs["ship_0"]["weapons"]:
@@ -469,7 +469,7 @@ class SergeEnvRunner:
 
         if not self.ship_features:
             # should only occur once, on the first step
-            self._build_ship_features()
+            self._build_ship_features()  # generating the ships
 
         # update ship weapon inventories
         ship_features = self.ship_features
@@ -491,7 +491,7 @@ class SergeEnvRunner:
         Send a message to the serge server to update the serge state. (Separate from sim update, which occurs when
         entering planning phase).
         """
-        mapping_msg = self._build_step_message()
+        mapping_msg = self._build_map_message()
         self.serge_game.send_message(mapping_msg)
 
     def _process_custom_message(self, message: dict) -> None:
