@@ -325,7 +325,7 @@ class SergeEnvRunner:
 
         threat_dict["properties"]["id"] = self._sim_threat_id_to_serge_id(threat["threat_id"])
         threat_dict["properties"]["label"] = "Threat " + self._sim_threat_id_to_serge_id(threat["threat_id"])
-        threat_dict["properties"]["turn"] = self.turn
+        threat_dict["properties"]["turn"] = self.turn + 1
         threat_dict["properties"]["Expected ETA"] = str(float(threat["estimated_time_of_arrival"]))
         target_ship = int((threat["target_ship"]))
         threat_dict["properties"]["Ship Targeted"] = "Alpha" if target_ship == 0 else "Bravo"
@@ -361,7 +361,7 @@ class SergeEnvRunner:
         weapon_dict["geometry"]["coordinates"] = [weapon_long, weapon_lat]  # serge wants long-lat
         weapon_dict["properties"]["id"] = weapon["weapon_id"]
         weapon_dict["properties"]["label"] = weapon["weapon_id"]
-        weapon_dict["properties"]["turn"] = self.turn
+        weapon_dict["properties"]["turn"] = self.turn + 1
         weapon_dict["properties"]["type"] = self.WEAPON_INT_TO_STR[weapon["weapon_type"]]
 
         if status is None:
@@ -419,21 +419,35 @@ class SergeEnvRunner:
             long_range_dict,  # Range circle: Long
         ]
 
+    def _build_geojson_line(self, start: tuple[float, float], end: tuple[float, float]) -> dict:
+        return {
+            "geometry": {"coordinates": [start, end], "type": "LineString"},
+            "properties": {
+                "_type": "CoreRenderer",
+                "color": "#999",
+                "force": "f-taskforce",
+                "id": "line",
+                "label": "",
+                "phase": "adjudication",
+                "turn": self.turn + 1,
+            },
+            "type": "Feature",
+        }
+
     def _build_map_message(self) -> dict:
         # Generate map objects for Serge from the current game observations
 
         # generating threat features
-        threat_locations: dict[str, tuple[float, float]] = dict()
-        threat_features: list[dict] = []
+        threat_features_map: dict[str, dict] = dict()
         for threat in itertools.chain(self.obs["ship_0"]["threats"], self.obs["ship_1"]["threats"]):
             threat_id = threat["threat_id"]
-            if threat_id not in threat_locations:  # ensuring no duplicate
-                threat_locations[threat_id] = threat["location"]
+            if threat_id not in threat_features_map:  # ensuring no duplicate
                 threat_dict = self._make_threat_dict(threat)
-                threat_features.append(threat_dict)
+                threat_features_map[threat_id] = threat_dict
 
         # generating weapon features
         weapon_features: list[dict] = []
+        line_features: list[dict] = []
         weapon_ids: set[str] = set()
         for weapon in itertools.chain(self.obs["ship_0"]["weapons"], self.obs["ship_1"]["weapons"]):
             # (both ships see weapons launched by each other)
@@ -442,6 +456,16 @@ class SergeEnvRunner:
                 weapon_ids.add(weapon["weapon_id"])
                 weapon_dict = self._make_weapon_dict(weapon)
                 weapon_features.append(weapon_dict)
+
+                # create a line feature to connect the weapon to the targeted threat
+                target_id = weapon["target_id"]
+                if target_id in threat_features_map:
+                    geojson_line = self._build_geojson_line(
+                        weapon_dict["geometry"]["coordinates"],
+                        threat_features_map[target_id]["geometry"]["coordinates"],
+                    )
+                    geojson_line["properties"]["id"] += target_id
+                    line_features.append(geojson_line)
 
         # process game events captured in messages
         for message in self.obs["messages"]:
@@ -454,7 +478,7 @@ class SergeEnvRunner:
                 self.ship_features[message.ship_id]["properties"]["Destroyed By"] = message.threat_id
             elif isinstance(message, ThreatMissMessage):
                 threat_dict = self._make_threat_dict(message.threat_obs, missed=True)
-                threat_features.append(threat_dict)
+                threat_features_map[message.threat_obs["threat_id"]] = threat_dict
 
         step_message = deepcopy(MSG_MAPPING_SHIPS)
 
@@ -468,12 +492,16 @@ class SergeEnvRunner:
         ship_0_weapon_1_inventory = self.obs["ship_0"]["inventory"]["weapon_1_inventory"]
         ship_1_weapon_0_inventory = self.obs["ship_1"]["inventory"]["weapon_0_inventory"]
         ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
+        ship_features[0]["properties"]["turn"] = self.turn + 1
         ship_features[0]["properties"]["Long Range ammo"] = ship_0_weapon_0_inventory
         ship_features[0]["properties"]["Short Range ammo"] = ship_0_weapon_1_inventory
+        ship_features[1]["properties"]["turn"] = self.turn + 1
         ship_features[1]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
         ship_features[1]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
 
-        step_message["featureCollection"]["features"] = ship_features + threat_features + weapon_features
+        step_message["featureCollection"]["features"] = (
+            ship_features + list(threat_features_map.values()) + weapon_features + line_features
+        )
 
         return step_message
 
