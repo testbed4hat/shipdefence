@@ -1,5 +1,6 @@
 import time
 from copy import deepcopy
+import itertools
 from typing import Tuple
 from warnings import warn
 
@@ -422,48 +423,38 @@ class SergeEnvRunner:
         # Generate map objects for Serge from the current game observations
 
         # generating threat features
-        threat_ids = set()
-        threats = []
-        for threat in self.obs["ship_0"]["threats"]:
-            threat_ids.add(threat["threat_id"])
-            threat_dict = self._make_threat_dict(threat)
-            threats.append(threat_dict)
-
-        for threat in self.obs["ship_1"]["threats"]:
+        threat_locations: dict[str, tuple[float, float]] = dict()
+        threat_features: list[dict] = []
+        for threat in itertools.chain(self.obs["ship_0"]["threats"], self.obs["ship_1"]["threats"]):
             threat_id = threat["threat_id"]
-            if threat_id not in threat_ids:
-                threat_ids.add(threat["threat_id"])
+            if threat_id not in threat_locations:  # ensuring no duplicate
+                threat_locations[threat_id] = threat["location"]
                 threat_dict = self._make_threat_dict(threat)
-                threats.append(threat_dict)
+                threat_features.append(threat_dict)
 
         # generating weapon features
-        weapons = []
-        weapon_ids = set()
-        for weapon in self.obs["ship_0"]["weapons"]:
-            weapon_ids.add(weapon["weapon_id"])
-            weapon_dict = self._make_weapon_dict(weapon)
-            weapons.append(weapon_dict)
-
-        # get any weapons seen by Ship 1 but NOT ship 0 (both ships see weapons launched by each other)
-        for weapon in self.obs["ship_1"]["weapons"]:
+        weapon_features: list[dict] = []
+        weapon_ids: set[str] = set()
+        for weapon in itertools.chain(self.obs["ship_0"]["weapons"], self.obs["ship_1"]["weapons"]):
+            # (both ships see weapons launched by each other)
             weapon_id = weapon["weapon_id"]
-            if weapon_id not in weapon_ids:
+            if weapon_id not in weapon_ids:  # ensuring no duplicate
                 weapon_ids.add(weapon["weapon_id"])
                 weapon_dict = self._make_weapon_dict(weapon)
-                weapons.append(weapon_dict)
+                weapon_features.append(weapon_dict)
 
         # process game events captured in messages
         for message in self.obs["messages"]:
             if isinstance(message, WeaponEndMessage):
                 weapon_dict = self._make_weapon_dict(message.weapon, "Hit" if message.destroyed_target else "Missed")
-                weapons.append(weapon_dict)
+                weapon_features.append(weapon_dict)
             elif isinstance(message, ShipDestroyedMessage):
                 self.ship_features[message.ship_id]["properties"]["sidc"] = ICONS["ShipDestroyed"]
                 self.ship_features[message.ship_id]["properties"]["health"] = 0
                 self.ship_features[message.ship_id]["properties"]["Destroyed By"] = message.threat_id
             elif isinstance(message, ThreatMissMessage):
                 threat_dict = self._make_threat_dict(message.threat_obs, missed=True)
-                threats.append(threat_dict)
+                threat_features.append(threat_dict)
 
         step_message = deepcopy(MSG_MAPPING_SHIPS)
 
@@ -482,7 +473,7 @@ class SergeEnvRunner:
         ship_features[1]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
         ship_features[1]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
 
-        step_message["featureCollection"]["features"] = ship_features + threats + weapons
+        step_message["featureCollection"]["features"] = ship_features + threat_features + weapon_features
 
         return step_message
 
