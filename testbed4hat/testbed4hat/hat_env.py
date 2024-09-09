@@ -269,7 +269,7 @@ class HatEnv(gym.Env):
                 break
             elif d < 100:
                 threats_to_pop.append(threat_id)
-                message = ThreatMissMessage(threat_id, threat.target_ship_id, second)
+                message = ThreatMissMessage(self._threat_observation(threat.target_ship_id, threat), second)
                 self.step_messages.append(message)
 
         # remove any threats that were eliminated in this step

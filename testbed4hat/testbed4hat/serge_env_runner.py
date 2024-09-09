@@ -10,7 +10,7 @@ from shapely.geometry import Point
 from shapely.ops import transform
 
 from serge import MSG_MAPPING_SHIPS, SergeGame
-from testbed4hat.testbed4hat.messages import WeaponEndMessage
+from testbed4hat.testbed4hat.messages import ShipDestroyedMessage, ThreatMissMessage, WeaponEndMessage
 from testbed4hat.testbed4hat.hat_env import HatEnv
 from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from testbed4hat.testbed4hat.heuristic_agent import HeuristicAgent
@@ -91,10 +91,12 @@ SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
 }
 
 ICONS = {
-    "Weapon0": "30030200001100000213",
-    "Weapon1": "30030200001100000212",
-    "Weapon0Destroyed": "30030240001100000213",
-    "Weapon1Destroyed": "30030240001100000212",
+    "Weapon0": "30030220001100000813",  # "Long Range"
+    "Weapon1": "30030200001100000812",  # "Short Range"
+    "Weapon0Destroyed": "30030240001100000813",
+    "Weapon1Destroyed": "30030240001100000812",
+    "ThreatDamaged": "30060230001100000000",
+    "ShipDestroyed": "30033040001202031500",
 }
 
 
@@ -312,7 +314,7 @@ class SergeEnvRunner:
             action_msg = self._make_suggested_action_message(a)
             self.serge_game.send_message(action_msg)
 
-    def _make_threat_dict(self, threat: dict) -> dict:
+    def _make_threat_dict(self, threat: dict, missed: bool = False) -> dict:
         threat_dict = deepcopy(THREAT_TEMPLATE)
         threat_x, threat_y = threat["location"]
 
@@ -326,6 +328,10 @@ class SergeEnvRunner:
         threat_dict["properties"]["Expected ETA"] = str(float(threat["estimated_time_of_arrival"]))
         target_ship = int((threat["target_ship"]))
         threat_dict["properties"]["Ship Targeted"] = "Alpha" if target_ship == 0 else "Bravo"
+
+        if missed:
+            threat_dict["properties"]["Missed"] = "Yes"
+            threat_dict["sidc"] = ICONS["ThreatDamaged"]
 
         threat_dict["properties"]["Long Range PK"] = str(float(threat["weapon_0_kill_probability"]))
         threat_dict["properties"]["Short Range PK"] = str(float(threat["weapon_1_kill_probability"]))
@@ -451,6 +457,13 @@ class SergeEnvRunner:
             if isinstance(message, WeaponEndMessage):
                 weapon_dict = self._make_weapon_dict(message.weapon, "Hit" if message.destroyed_target else "Missed")
                 weapons.append(weapon_dict)
+            elif isinstance(message, ShipDestroyedMessage):
+                self.ship_features[message.ship_id]["properties"]["sidc"] = ICONS["ShipDestroyed"]
+                self.ship_features[message.ship_id]["properties"]["health"] = 0
+                self.ship_features[message.ship_id]["properties"]["Destroyed By"] = message.threat_id
+            elif isinstance(message, ThreatMissMessage):
+                threat_dict = self._make_threat_dict(message.threat_obs, missed=True)
+                threats.append(threat_dict)
 
         step_message = deepcopy(MSG_MAPPING_SHIPS)
 

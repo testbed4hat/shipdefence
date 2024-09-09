@@ -95,13 +95,12 @@ class WeaponEndMessage:
 
 
 class ThreatMissMessage:
-    def __init__(self, threat_id: str, targeted_threat_id: str, second: int):
-        self.threat_id = threat_id
-        self.targeted_threat_id = targeted_threat_id
+    def __init__(self, threat_obs: dict, second: int):
+        self.threat_obs: dict = threat_obs
         self.second = second
 
     def to_dict(self):
         return self.__dict__.copy()
 
     def to_string(self):
-        return f"Threat {self.threat_id} missed target ship {self.targeted_threat_id} at time s={self.second}."
+        return f"Threat {self.threat_obs['threat_id']} missed target ship {self.threat_obs['target_ship']} at time s={self.second}."
