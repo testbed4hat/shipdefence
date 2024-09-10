@@ -21,7 +21,7 @@ import numpy as np
 import pygame
 from gymnasium.core import ObsType
 
-from .messages import WeaponLaunchInfo, WeaponEndMessage, ShipDestroyedMessage, ThreatMissMessage
+from .messages import WeaponLaunchInfo, WeaponEndMessage, ShipDestroyedMessage, ThreatMissMessage, WeaponMissMessage
 from .pk_table import get_pk
 from .ship import Ship
 from .threat import Threat
@@ -242,6 +242,9 @@ class HatEnv(gym.Env):
                         self.threats.pop(targeted_threat_id)
                         destroyed_target = True
                     message = WeaponEndMessage(weapon.get_weapon_id(), targeted_threat_id, second, destroyed_target)
+                    self.step_messages.append(message)
+                else:
+                    message = WeaponMissMessage(weapon.get_weapon_id(), weapon.get_target_threat_id(), second)
                     self.step_messages.append(message)
             elif weapon.get_target_threat_id() not in self.threats:
                 message = WeaponEndMessage(weapon.get_weapon_id(), weapon.get_target_threat_id(), second, False)
