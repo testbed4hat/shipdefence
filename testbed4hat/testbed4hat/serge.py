@@ -209,7 +209,7 @@ MSG_MAPPING_SHIPS = {  # placing the two ships on the map with a 100-km range ci
                     "turn": 0,
                 },
                 "geometry": {
-                    "type": "Polygon",
+                    "type": "LineString",
                     "coordinates": [
                         [
                             [43.21357045974609, 13.718655567489348],

@@ -150,7 +150,7 @@ class WaveGenerator:
         else:
             raise ValueError("Threat type must be either 0 or 1")
 
-        threat_id = f"threat_{self.threat_counter}"
+        threat_id = f"T{self.threat_counter:02d}"
         self.threat_counter += 1
         threat = Threat(position, ship_id, vel, kill_rad, kill_prob, threat_type=threat_type, threat_id=threat_id)
         return threat

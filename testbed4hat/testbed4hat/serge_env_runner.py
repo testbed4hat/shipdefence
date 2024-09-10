@@ -117,9 +117,9 @@ def get_pd_polygons(lat, lon):
     long_weapon_pk_ring = geodesic_point_buffer(lat, lon, long_weapon_pk_radius)  # in meters
 
     # convert to serge format
-    low_pk_ring = [[list(coord) for coord in low_pk_ring]]
-    short_weapon_pk_ring = [[list(coord) for coord in short_weapon_pk_ring]]
-    long_weapon_pk_ring = [[list(coord) for coord in long_weapon_pk_ring]]
+    low_pk_ring = [list(coord) for coord in low_pk_ring]
+    short_weapon_pk_ring = [list(coord) for coord in short_weapon_pk_ring]
+    long_weapon_pk_ring = [list(coord) for coord in long_weapon_pk_ring]
     return low_pk_ring, short_weapon_pk_ring, long_weapon_pk_ring
 
 
@@ -239,11 +239,11 @@ class SergeEnvRunner:
 
     @staticmethod
     def _sim_threat_id_to_serge_id(threat_id: str) -> str:
-        return threat_id[len("threat_") :]
+        return threat_id
 
     @staticmethod
     def _serge_threat_id_to_sim_id(threat_id: str) -> str:
-        return "threat_" + threat_id
+        return threat_id
 
     def _convert_wa_message_to_action(self, wa_message) -> Tuple[int, int, str]:
         # # WA message
@@ -297,16 +297,24 @@ class SergeEnvRunner:
             if threat_id == threat["threat_id"]:
                 threat_info = threat
                 break
-        WA_MSG["message"]["Threat"]["Expected ETA"] = threat_info["estimated_time_of_arrival"]
-        WA_MSG["message"]["Threat"]["ID"] = self._sim_threat_id_to_serge_id(threat_info["threat_id"])
-        target_ship = int(threat_info["target_ship"])
+
+        # collect information
+        threat_id: str = threat_info["threat_id"]
+        target_ship: int = int(threat_info["target_ship"])
         assert target_ship in [0, 1]  # ship IDs are 1 indexed
-        ship_targeted = self.ship_0_serge_name if target_ship == 0 else self.ship_1_serge_name
+        ship_targeted: str = self.ship_0_serge_name if target_ship == 0 else self.ship_1_serge_name
+        speed: float = np.linalg.norm(threat_info["velocity"])
+        weapon_name: str = self.WEAPON_INT_TO_STR[weapon_type]
+        eta: float = threat_info["estimated_time_of_arrival"]  # in number of seconds
+        eta_mins: int = int(eta / 60)
+        eta_secs: int = int(round(eta % 60))
+
+        WA_MSG["message"]["Threat"]["Expected ETA"] = f"{eta_mins:02d}:{eta_secs:02d}"
+        WA_MSG["message"]["Threat"]["ID"] = self._sim_threat_id_to_serge_id(threat_id)
         WA_MSG["message"]["Threat"]["Ship Targeted"] = ship_targeted
-        speed = np.linalg.norm(threat_info["velocity"])
-        WA_MSG["message"]["Threat"]["Velocity"] = str(speed)
-        WA_MSG["message"]["Title"] = "Suggested WA"
-        WA_MSG["message"]["Weapon"] = self.WEAPON_INT_TO_STR[weapon_type]
+        WA_MSG["message"]["Threat"]["Velocity"] = f"{speed:.1f}"
+        WA_MSG["message"]["Title"] = f"{threat_id}: [{weapon_name}] (Turn {self.turn + 1})"
+        WA_MSG["message"]["Weapon"] = weapon_name
         return WA_MSG
 
     def _send_suggested_actions(self) -> None:
