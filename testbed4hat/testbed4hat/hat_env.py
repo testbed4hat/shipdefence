@@ -170,7 +170,7 @@ class HatEnv(gym.Env):
         """Try to add a weapon to the environment from a ship, report result to the user."""
         assert isinstance(threat_id, str)
         assert isinstance(weapon_type, int)
-        weapon_id = f"weapon_{self.weapon_counter}"
+        weapon_id = f"W{self.weapon_counter:02d}"
         threat = self.threats[threat_id]
         ship = self._get_ship(ship_id)
         weapon = ship.use_weapon(weapon_type, threat, weapon_id)
@@ -246,7 +246,7 @@ class HatEnv(gym.Env):
                     message = WeaponEndMessage(weapon_obs, second, destroyed_target)
                     self.step_messages.append(message)
                 else:
-                    message = WeaponMissMessage(weapon.get_weapon_id(), weapon.get_target_threat_id(), second)
+                    message = WeaponMissMessage(weapon_obs, second)
                     self.step_messages.append(message)
             elif weapon.get_target_threat_id() not in self.threats:
                 message = WeaponEndMessage(weapon_obs, second, False)

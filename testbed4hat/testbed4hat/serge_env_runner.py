@@ -11,7 +11,12 @@ from shapely.geometry import Point
 from shapely.ops import transform
 
 from serge import MSG_MAPPING_SHIPS, SergeGame
-from testbed4hat.testbed4hat.messages import ShipDestroyedMessage, ThreatMissMessage, WeaponEndMessage
+from testbed4hat.testbed4hat.messages import (
+    ShipDestroyedMessage,
+    ThreatMissMessage,
+    WeaponEndMessage,
+    WeaponMissMessage,
+)
 from testbed4hat.testbed4hat.hat_env import HatEnv
 from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from testbed4hat.testbed4hat.heuristic_agent import HeuristicAgent
@@ -80,7 +85,7 @@ SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
     },
     "message": {
         "Threat": {
-            "Detected type": "ASM",
+            "Detected type": "Anti-ship Missile",
             "Expected ETA": "UNSPECIFIED",
             "ID": "UNSPECIFIED",
             "Ship Targeted": "UNSPECIFIED",
@@ -92,10 +97,12 @@ SUGGESTED_ACTION_TEMPLATE = {  # a weapon assignment message
 }
 
 ICONS = {
-    "Weapon0": "30030220001100000813",  # "Long Range"
+    "Weapon0": "30030220001100000815",  # "Long Range"
     "Weapon1": "30030200001100000812",  # "Short Range"
-    "Weapon0Destroyed": "30030240001100000813",
+    "Weapon0Destroyed": "30030240001100000815",
     "Weapon1Destroyed": "30030240001100000812",
+    "Weapon0Missed": "30030230001100000815",
+    "Weapon1Missed": "30030230001100000812",
     "ThreatDamaged": "30060230001100000000",
     "ShipDestroyed": "30033040001202031500",
 }
@@ -379,7 +386,11 @@ class SergeEnvRunner:
             # the weapon is spent
             weapon_dict["properties"]["status"] = status
             weapon_dict["properties"]["health"] = 0
-            weapon_dict["properties"]["sidc"] = ICONS[f"Weapon{weapon['weapon_type']}Destroyed"]
+            weapon_dict["properties"]["sidc"] = (
+                ICONS[f"Weapon{weapon['weapon_type']}Missed"]
+                if status == "Missed"
+                else ICONS[f"Weapon{weapon['weapon_type']}Destroyed"]
+            )
         weapon_dict["properties"]["Launched by"] = serge_ship_id
         weapon_dict["properties"]["Expected ETA"] = weapon["time_left"]
         weapon_dict["properties"]["Threat Targeted"] = weapon["target_id"]
@@ -396,10 +407,10 @@ class SergeEnvRunner:
         ship_0_weapon_1_inventory = self.obs["ship_0"]["inventory"]["weapon_1_inventory"]
         ship_1_weapon_0_inventory = self.obs["ship_1"]["inventory"]["weapon_0_inventory"]
         ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
-        message["featureCollection"]["features"][0]["properties"]["Long Range ammo"] = ship_0_weapon_0_inventory
-        message["featureCollection"]["features"][0]["properties"]["Short Range ammo"] = ship_0_weapon_1_inventory
-        message["featureCollection"]["features"][1]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
-        message["featureCollection"]["features"][1]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
+        message["featureCollection"]["features"][0]["properties"]["LR ammo"] = ship_0_weapon_0_inventory
+        message["featureCollection"]["features"][0]["properties"]["SR ammo"] = ship_0_weapon_1_inventory
+        message["featureCollection"]["features"][1]["properties"]["LR ammo"] = ship_1_weapon_0_inventory
+        message["featureCollection"]["features"][1]["properties"]["SR ammo"] = ship_1_weapon_1_inventory
 
         # make range polygon features
         range_dict = message["featureCollection"]["features"][2]
@@ -477,8 +488,11 @@ class SergeEnvRunner:
 
         # process game events captured in messages
         for message in self.obs["messages"]:
-            if isinstance(message, WeaponEndMessage):
-                weapon_dict = self._make_weapon_dict(message.weapon, "Hit" if message.destroyed_target else "Missed")
+            if isinstance(message, (WeaponEndMessage, WeaponMissMessage)):
+                missed = isinstance(message, WeaponMissMessage)
+                weapon_dict = self._make_weapon_dict(
+                    message.weapon, "Missed" if missed else ("Hit" if message.destroyed_target else "Wasted")
+                )
                 weapon_features.append(weapon_dict)
             elif isinstance(message, ShipDestroyedMessage):
                 self.ship_features[message.ship_id]["properties"]["sidc"] = ICONS["ShipDestroyed"]
@@ -501,11 +515,11 @@ class SergeEnvRunner:
         ship_1_weapon_0_inventory = self.obs["ship_1"]["inventory"]["weapon_0_inventory"]
         ship_1_weapon_1_inventory = self.obs["ship_1"]["inventory"]["weapon_1_inventory"]
         ship_features[0]["properties"]["turn"] = self.turn + 1
-        ship_features[0]["properties"]["Long Range ammo"] = ship_0_weapon_0_inventory
-        ship_features[0]["properties"]["Short Range ammo"] = ship_0_weapon_1_inventory
+        ship_features[0]["properties"]["LR ammo"] = ship_0_weapon_0_inventory
+        ship_features[0]["properties"]["SR ammo"] = ship_0_weapon_1_inventory
         ship_features[1]["properties"]["turn"] = self.turn + 1
-        ship_features[1]["properties"]["Long Range ammo"] = ship_1_weapon_0_inventory
-        ship_features[1]["properties"]["Short Range ammo"] = ship_1_weapon_1_inventory
+        ship_features[1]["properties"]["LR ammo"] = ship_1_weapon_0_inventory
+        ship_features[1]["properties"]["SR ammo"] = ship_1_weapon_1_inventory
 
         step_message["featureCollection"]["features"] = (
             ship_features + list(threat_features_map.values()) + weapon_features + line_features
@@ -649,6 +663,6 @@ class SergeEnvRunner:
 
 
 if __name__ == "__main__":
-    game_id = "wargame-m0p9azmu"
+    game_id = "wargame-m0xvwqpm"
     runner = SergeEnvRunner(game_id=game_id)
     runner.run()
