@@ -94,6 +94,19 @@ class WeaponEndMessage:
             return f"Weapon {self.weapon['weapon_id']} targeting {self.weapon['target_id']} was wasted, target already destroyed"
 
 
+class WeaponMissMessage:
+    def __init__(self, weapon_id: str, targeted_threat_id: str, second: int):
+        self.weapon_id = weapon_id
+        self.targeted_threat_id = targeted_threat_id
+        self.second = second
+
+    def to_dict(self):
+        return self.__dict__.copy()
+
+    def to_string(self):
+        return f"Weapon {self.weapon_id} missed target {self.targeted_threat_id} at time s={self.second}."
+
+
 class ThreatMissMessage:
     def __init__(self, threat_obs: dict, second: int):
         self.threat_obs: dict = threat_obs
