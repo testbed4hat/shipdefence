@@ -22,6 +22,8 @@ from testbed4hat.testbed4hat.hat_env_config import HatEnvConfig
 from testbed4hat.testbed4hat.heuristic_agent import HeuristicAgent
 from testbed4hat.testbed4hat.utils import compute_pk_ring_radii
 
+SHIP_NAMES = ["Alpha", "Bravo"]
+
 THREAT_TEMPLATE = {
     "geometry": {"coordinates": [43.21484211402448, 12.819648833091783], "type": "Point"},
     "properties": {
@@ -545,14 +547,12 @@ class SergeEnvRunner:
             self._process_action_msg(message)
 
     def _send_obs_messages(self):
-        launch_messages = self.obs["launched"]
+        launch_messages: list[dict] = self.obs["launched"]
         fail_messages = self.obs["failed"]
         other_messages = self.obs["messages"]
         # Send launched messages
         for launch in launch_messages:
-            text = "Weapon Launched! \nWeapon info:\n"
-            for k, v in launch.items():
-                text += f"{k}: {v}\n"
+            text = f"Weapon Launched! {SHIP_NAMES[launch['ship_id']]} fired {launch['weapon_id']} ({self.WEAPON_INT_TO_STR[launch['weapon_type']]}) at {launch['threat_id']}."
             self.serge_game.send_chat_message(text)
         # Send failed messages
         for fail in fail_messages:
@@ -659,7 +659,7 @@ class SergeEnvRunner:
 
             if self.terminated or self.truncated:
                 running = False
-                self.serge_game.send_chat_message("Simulation terminated.")
+                self.serge_game.send_chat_message("Wargame ended!")
 
 
 if __name__ == "__main__":

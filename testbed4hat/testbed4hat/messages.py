@@ -14,6 +14,8 @@
 # limitations under the License.
 from testbed4hat.testbed4hat.weapon import Weapon
 
+SHIP_NAMES = ["Alpha", "Bravo"]
+
 
 class WeaponLaunchInfo:
     def __init__(
@@ -75,7 +77,7 @@ class ShipDestroyedMessage:
         return self.__dict__.copy()
 
     def to_string(self):
-        return f"Ship {self.ship_id} killed by {self.threat_id} at time {self.second} at distance " f"{self.distance}."
+        return f"Ship {SHIP_NAMES[self.ship_id]} killed by {self.threat_id} at {seconds_to_string(self.second)}."
 
 
 class WeaponEndMessage:
@@ -89,9 +91,9 @@ class WeaponEndMessage:
 
     def to_string(self):
         if self.destroyed_target:
-            return f"Weapon {self.weapon['weapon_id']} destroyed target {self.weapon['target_id']} at time s={self.second}."
+            return f"Weapon {self.weapon['weapon_id']} destroyed target {self.weapon['target_id']} at {seconds_to_string(self.second)}."
         else:
-            return f"Weapon {self.weapon['weapon_id']} targeting {self.weapon['target_id']} was wasted, target already destroyed"
+            return f"Weapon {self.weapon['weapon_id']} targeting {self.weapon['target_id']} was wasted; target already destroyed."
 
 
 class WeaponMissMessage:
@@ -103,7 +105,7 @@ class WeaponMissMessage:
         return self.__dict__.copy()
 
     def to_string(self):
-        return f"Weapon {self.weapon['weapon_id']} missed target {self.weapon['target_id']} at time s={self.second}."
+        return f"Weapon {self.weapon['weapon_id']} missed target {self.weapon['target_id']} at {seconds_to_string(self.second)}."
 
 
 class ThreatMissMessage:
@@ -115,4 +117,10 @@ class ThreatMissMessage:
         return self.__dict__.copy()
 
     def to_string(self):
-        return f"Threat {self.threat_obs['threat_id']} missed target ship {self.threat_obs['target_ship']} at time s={self.second}."
+        return f"Threat {self.threat_obs['threat_id']} missed target ship {self.threat_obs['target_ship']} at {seconds_to_string(self.second)}."
+
+
+def seconds_to_string(seconds: float) -> str:
+    mins: int = int(seconds / 60)
+    secs: int = int(round(seconds % 60))
+    return f"{mins}m {secs}s"
