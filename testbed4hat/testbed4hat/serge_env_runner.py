@@ -30,7 +30,7 @@ THREAT_TEMPLATE = {
         "_type": "MilSymRenderer",
         "category": "Military",
         "force": "f-militia",
-        "health": 100,
+        # "health": 100,
         "id": "threat_id",
         "label": "Threat",
         "phase": "planning",
