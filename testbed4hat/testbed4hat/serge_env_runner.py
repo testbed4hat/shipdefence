@@ -51,7 +51,7 @@ WEAPON_TEMPLATE = {
         "_type": "MilSymRenderer",
         "category": "Military",
         "force": "f-taskforce",
-        "health": 100,
+        # "health": 100,
         "id": "weapon_id",
         "label": "Alpha",
         "phase": "planning",
@@ -387,7 +387,7 @@ class SergeEnvRunner:
         else:
             # the weapon is spent
             weapon_dict["properties"]["status"] = status
-            weapon_dict["properties"]["health"] = 0
+            # weapon_dict["properties"]["health"] = 0
             weapon_dict["properties"]["sidc"] = (
                 ICONS[f"Weapon{weapon['weapon_type']}Missed"]
                 if status == "Missed"
@@ -498,7 +498,7 @@ class SergeEnvRunner:
                 weapon_features.append(weapon_dict)
             elif isinstance(message, ShipDestroyedMessage):
                 self.ship_features[message.ship_id]["properties"]["sidc"] = ICONS["ShipDestroyed"]
-                self.ship_features[message.ship_id]["properties"]["health"] = 0
+                # self.ship_features[message.ship_id]["properties"]["health"] = 0
                 self.ship_features[message.ship_id]["properties"]["Destroyed By"] = message.threat_id
             elif isinstance(message, ThreatMissMessage):
                 threat_dict = self._make_threat_dict(message.threat_obs, missed=True)
