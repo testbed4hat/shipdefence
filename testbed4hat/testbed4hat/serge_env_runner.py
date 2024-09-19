@@ -597,9 +597,11 @@ class SergeEnvRunner:
             # looking for an InfoMessage with phase == "adjudication"
             for message in new_messages:
                 if message["messageType"] == "InfoMessage" and message["phase"] == "adjudication":
+                    print("\n")
                     return message["_id"]  # return the message ID to mark where this turn ends
 
             # Wait for a few seconds before checking for new messages again
+            print(".", end="", flush=True)
             time.sleep(self.WAIT_TIME_BETWEEN_POLLS)
 
     def _process_messages_in_the_last_turn(self, adjudication_msg_id: str) -> str | None:
@@ -614,6 +616,7 @@ class SergeEnvRunner:
                 # Process custom messages (Chat, WA)
                 self._process_custom_message(message)
             elif message_type == "InfoMessage":
+                print(f"Turn {message['gameTurn']}: {message['phase']}")
                 msg_id = message["_id"]
                 msg_turn_number = message["gameTurn"]
                 if message["phase"] == "adjudication":
