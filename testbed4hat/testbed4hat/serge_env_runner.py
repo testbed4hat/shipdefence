@@ -170,7 +170,7 @@ class SergeEnvRunner:
         config.set_parameter("hard_ship_0_location", self.hard_ship_0_location)
         config.set_parameter("hard_ship_1_location", self.hard_ship_1_location)
 
-        # tentative threat schedule: Should be 10 minutes long, with all threats getting to the ship by the last step
+        # tentative threat schedule: Should be 16 minutes long, with all threats getting to the ship by the last step
         threat_schedule = {
             10: (0, 1),  # Threat type 1 at second 10 (step 0)
             50: (1, 0),  # Threat type 0 at second 50 (step 0)
@@ -179,6 +179,14 @@ class SergeEnvRunner:
             3 * 60 + 15: (1, 0),  # Threat type 0 at 3 min 15 seconds (step 3)
             4 * 60 + 1: (0, 1),  # Threat type 1 at 4 min 1 second (step 4)
             4 * 60 + 40: (1, 1),  # One of each threat type at 4 min 40 seconds (step 4)
+            # a 2-minute break and repeating the above schedule for the following 5 minutes, starting from minute 6
+            6 * 60 + 10: (0, 1),  # (add 6 minutes to the above schedule)
+            6 * 60 + 50: (1, 0),
+            7 * 60 + 10: (1, 0),
+            8 * 60 + 30: (1, 1),
+            9 * 60 + 15: (1, 0),
+            10 * 60 + 1: (0, 1),
+            10 * 60 + 40: (1, 1),
         }
         config.set_parameter("schedule", threat_schedule)
         config.set_parameter("weapon_0_reload_time", 1)
@@ -201,8 +209,8 @@ class SergeEnvRunner:
         config.set_parameter("render_env", False)
         # config.set_parameter("verbose", False)
 
-        # Set max time to 12 minutes
-        config.set_parameter("max_episode_time_in_seconds", 10 * 60)
+        # Set max time to 20 minutes
+        config.set_parameter("max_episode_time_in_seconds", 20 * 60)
 
         config.set_parameter("seed", 1337)
 
