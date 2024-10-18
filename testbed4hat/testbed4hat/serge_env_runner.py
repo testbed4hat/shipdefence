@@ -4,6 +4,7 @@ import itertools
 from typing import Tuple
 from warnings import warn
 
+import click
 import numpy as np
 import pyproj
 from pyproj import CRS, Transformer
@@ -137,7 +138,7 @@ class SergeEnvRunner:
     WEAPON_INT_TO_STR = {0: "Long Range", 1: "Short Range"}
     WAIT_TIME_BETWEEN_POLLS = 3
 
-    def __init__(self, game_id: str, server_url: str = "https://serge-inet.herokuapp.com"):
+    def __init__(self, game_id: str, server_url: str = "https://serge-inet.herokuapp.com", max_game_minutes: int = 20):
         # todo: log game to local storage?
 
         # long-lat coords in Serge: [43.21484211402448, 12.819648833091783]
@@ -209,8 +210,8 @@ class SergeEnvRunner:
         config.set_parameter("render_env", False)
         # config.set_parameter("verbose", False)
 
-        # Set max time to 20 minutes
-        config.set_parameter("max_episode_time_in_seconds", 20 * 60)
+        # Set max time to max_game_minutes
+        config.set_parameter("max_episode_time_in_seconds", max_game_minutes * 60)
 
         config.set_parameter("seed", 1337)
 
@@ -673,7 +674,20 @@ class SergeEnvRunner:
                 self.serge_game.send_chat_message("Wargame ended!")
 
 
-if __name__ == "__main__":
-    game_id = "wargame-m0xvwqpm"
-    runner = SergeEnvRunner(game_id=game_id)
+@click.command()
+@click.argument("game_id")
+@click.option(
+    "-m",
+    "--max-game-minutes",
+    required=False,
+    default=20,
+    type=int,
+    help="Truncating the game at the specified max game minutes",
+)
+def main(game_id: str, max_game_minutes: int):
+    runner = SergeEnvRunner(game_id=game_id, max_game_minutes=max_game_minutes)
     runner.run()
+
+
+if __name__ == "__main__":
+    main()
