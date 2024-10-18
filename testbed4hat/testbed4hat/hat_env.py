@@ -146,8 +146,7 @@ class HatEnv(gym.Env):
         self.weapons: list[Weapon] = list()
         self.time_step = None
         self.time_seconds = None
-        self.weapon_counter: int = 0
-        self.threat_counter: int = 0
+        self.weapon_counter: int = 1
         self.action_queue = None
         self.step_messages = None
 
