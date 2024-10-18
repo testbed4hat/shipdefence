@@ -667,7 +667,7 @@ class ShipDefenceWorld:
             # must be a missile; add it to the list of missiles seen in this round
             self.missile_seen[force_id].add(feature_id)
             # determine weapon or threat
-            if feature_id.startswith("weapon_"):
+            if feature_id.startswith("W"):
                 asset = self.update_weapon(force, feature_id, f"{pos_lat},{pos_lon}", properties)
             else:
                 asset = self.update_threat(force, feature_id, f"{pos_lat},{pos_lon}", properties)
@@ -724,8 +724,6 @@ class ShipDefenceWorld:
             parent_name = properties.get("Launched by", None)
             parent = self.find_asset_by_name(parent_name)
             target_id: str | None = properties.get("Threat Targeted", None)
-            # hack to reconcile the shortened threat ID
-            target_id = target_id[target_id.index("_") + 1 :]
             missile = Missile(
                 missile_id,
                 properties["label"],
