@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 from typing import Iterable, Optional
 
+import click
 from munch import munchify
 
 from provenance.bindings import *
@@ -822,14 +823,14 @@ def add_ed_to_verbs(verb: str) -> str:
     return verb + "d" if verb.endswith("e") else verb + "ed"
 
 
-if __name__ == "__main__":
+@click.command()
+@click.argument("game_id")
+def main(game_id: str):
     logging.basicConfig(level=logging.DEBUG)
-
     # Path initialisations
     csv_folder = Path("provenance/csv")
     target_folder = Path("provenance/outputs")
 
-    game_id = "wargame-lzudwjdd"
     log_file_handler = logging.FileHandler(target_folder / f"{game_id}.log")
     logger.addHandler(log_file_handler)
 
@@ -840,3 +841,7 @@ if __name__ == "__main__":
 
     # export the bindings
     world.write_bindings(csv_folder / f"{game_id}.csv")
+
+
+if __name__ == "__main__":
+    main()
