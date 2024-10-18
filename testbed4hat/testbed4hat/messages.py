@@ -117,7 +117,7 @@ class ThreatMissMessage:
         return self.__dict__.copy()
 
     def to_string(self):
-        return f"Threat {self.threat_obs['threat_id']} missed target ship {self.threat_obs['target_ship']} at {seconds_to_string(self.second)}."
+        return f"Threat {self.threat_obs['threat_id']} missed target ship {SHIP_NAMES[self.threat_obs['target_ship']]} at {seconds_to_string(self.second)}."
 
 
 def seconds_to_string(seconds: float) -> str:
