@@ -1,6 +1,7 @@
-import time
+from collections import defaultdict, namedtuple
 from copy import deepcopy
 import itertools
+import time
 from typing import Tuple
 from warnings import warn
 
@@ -24,6 +25,7 @@ from testbed4hat.testbed4hat.heuristic_agent import HeuristicAgent
 from testbed4hat.testbed4hat.utils import compute_pk_ring_radii
 
 SHIP_NAMES = ["Alpha", "Bravo"]
+LaunchTuple = namedtuple("LaunchTuple", ["ship_id", "weapon_id", "target_id"])
 
 THREAT_TEMPLATE = {
     "geometry": {"coordinates": [43.21484211402448, 12.819648833091783], "type": "Point"},
@@ -240,6 +242,9 @@ class SergeEnvRunner:
         self.ship_0_serge_name = "Alpha"
         self.ship_1_serge_name = "Bravo"
         self.last_adjudication_msg_id: str | None = None
+
+        ## statistics
+        self.launches: list[LaunchTuple] = []  # remember the interceptor launches
 
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
@@ -562,6 +567,7 @@ class SergeEnvRunner:
         # Send launched messages
         for launch in launch_messages:
             text = f"Weapon Launched! {SHIP_NAMES[launch['ship_id']]} fired {launch['weapon_id']} ({self.WEAPON_INT_TO_STR[launch['weapon_type']]}) at {launch['threat_id']}."
+            self.launches.append(LaunchTuple(launch["ship_id"], launch["weapon_type"], launch["threat_id"]))
             self.serge_game.send_chat_message(text)
         # Send failed messages
         for fail in fail_messages:
@@ -572,6 +578,22 @@ class SergeEnvRunner:
         # Send the rest of the messages
         for other in other_messages:
             self.serge_game.send_chat_message(other.to_string())
+
+    def _send_stats_messages(self):
+        self.serge_game.send_chat_message("Here is the wargame's summary...")
+        # summarising the launches
+        if self.launches:
+            launch_counts = defaultdict(int)
+            for l in self.launches:
+                launch_counts[(l.ship_id, l.weapon_id)] += 1
+            for ship_id in range(len(SHIP_NAMES)):
+                launch_summary_str = ", ".join(
+                    f"{launch_counts[(ship_id, weapon_id)]} {self.WEAPON_INT_TO_STR[weapon_id]}"
+                    for weapon_id in range(len(self.WEAPON_INT_TO_STR))
+                )
+                self.serge_game.send_chat_message(
+                    f"{SHIP_NAMES[ship_id]} launched {launch_summary_str} interceptor(s)."
+                )
 
     def _process_adjudication_phase(self) -> None:
         """
@@ -672,6 +694,8 @@ class SergeEnvRunner:
             if self.terminated or self.truncated:
                 running = False
                 self.serge_game.send_chat_message("Wargame ended!")
+
+        self._send_stats_messages()
 
 
 @click.command()
