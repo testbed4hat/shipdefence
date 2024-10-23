@@ -245,6 +245,7 @@ class SergeEnvRunner:
 
         ## statistics
         self.launches: list[LaunchTuple] = []  # remember the interceptor launches
+        self.no_threats_eliminated: int = 0
 
     def _reset_env(self):
         self.obs, self.info = self.env.reset()
@@ -578,6 +579,9 @@ class SergeEnvRunner:
         # Send the rest of the messages
         for other in other_messages:
             self.serge_game.send_chat_message(other.to_string())
+            # collecting the stats
+            if isinstance(other, WeaponEndMessage) and other.destroyed_target:
+                self.no_threats_eliminated += 1
 
     def _send_stats_messages(self):
         self.serge_game.send_chat_message("Here is the wargame's summary...")
@@ -591,9 +595,11 @@ class SergeEnvRunner:
                     f"{launch_counts[(ship_id, weapon_id)]} {self.WEAPON_INT_TO_STR[weapon_id]}"
                     for weapon_id in range(len(self.WEAPON_INT_TO_STR))
                 )
-                self.serge_game.send_chat_message(
-                    f"{SHIP_NAMES[ship_id]} launched {launch_summary_str} interceptor(s)."
-                )
+                self.serge_game.send_chat_message(f"{SHIP_NAMES[ship_id]} launched {launch_summary_str} interceptors.")
+        if self.no_threats_eliminated:
+            self.serge_game.send_chat_message(
+                f"Your taskforce managed to eliminate {self.no_threats_eliminated} threats."
+            )
 
     def _process_adjudication_phase(self) -> None:
         """
