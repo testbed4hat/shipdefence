@@ -12,15 +12,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from testbed4hat.testbed4hat.weapon import Weapon
+
+SHIP_NAMES = ["Alpha", "Bravo"]
+
 
 class WeaponLaunchInfo:
-    def __init__(self, launched: bool, ship_id: int, threat_id: str, weapon_type: int, reason: str,
-                 weapon_id: str = None):
+    def __init__(
+        self,
+        launched: bool,
+        ship_id: int,
+        threat_id: str,
+        weapon_type: int,
+        reason: str,
+        p_k: float = None,
+        weapon_id: str = None,
+    ):
         assert isinstance(launched, bool)
         assert isinstance(ship_id, int)
         assert isinstance(threat_id, str)
         assert isinstance(weapon_type, int)
         assert isinstance(reason, str)
+        assert isinstance(p_k, float) or p_k is None
         if weapon_id is not None:
             assert isinstance(weapon_id, str)
         self.launched = launched
@@ -28,6 +41,7 @@ class WeaponLaunchInfo:
         self.threat_id = threat_id
         self.weapon_type = weapon_type
         self.reason = reason
+        self.p_k = p_k
         self.weapon_id = weapon_id
 
     def to_dict(self):
@@ -35,7 +49,7 @@ class WeaponLaunchInfo:
 
     def to_obs(self):
         d = self.to_dict()
-        success = d.pop('launched')
+        success = d.pop("launched")
         if success:
             return d
         else:
@@ -63,35 +77,50 @@ class ShipDestroyedMessage:
         return self.__dict__.copy()
 
     def to_string(self):
-        return (f"Ship {self.ship_id} killed by {self.threat_id} at time {self.second} at distance "
-                f"{self.distance}.")
+        return f"Ship {SHIP_NAMES[self.ship_id]} killed by {self.threat_id} at {seconds_to_string(self.second)}."
 
 
 class WeaponEndMessage:
-    def __init__(self, weapon_id: str, targeted_threat_id: str, second: int, destroyed_target: bool):
-        self.weapon_id = weapon_id
-        self.targeted_threat_id = targeted_threat_id
-        self.second = second
-        self.destroyed_target = destroyed_target
+    def __init__(self, weapon: dict, second: int, destroyed_target: bool):
+        self.weapon: dict = weapon
+        self.second: int = second
+        self.destroyed_target: bool = destroyed_target
 
     def to_dict(self):
         return self.__dict__.copy()
 
     def to_string(self):
         if self.destroyed_target:
-            return f"Weapon {self.weapon_id} destroyed target {self.targeted_threat_id} at time s={self.second}."
+            return f"Weapon {self.weapon['weapon_id']} destroyed target {self.weapon['target_id']} at {seconds_to_string(self.second)}."
         else:
-            return f"Weapon {self.weapon_id} targeting {self.targeted_threat_id} was wasted, target already destroyed"
+            return f"Weapon {self.weapon['weapon_id']} targeting {self.weapon['target_id']} was wasted; target already destroyed."
 
 
-class ThreatMissMessage:
-    def __init__(self, threat_id: str, targeted_threat_id: str, second: int):
-        self.threat_id = threat_id
-        self.targeted_threat_id = targeted_threat_id
+class WeaponMissMessage:
+    def __init__(self, weapon: dict, second: int):
+        self.weapon: dict = weapon
         self.second = second
 
     def to_dict(self):
         return self.__dict__.copy()
 
     def to_string(self):
-        return f"Threat {self.threat_id} missed target ship {self.targeted_threat_id} at time s={self.second}."
+        return f"Weapon {self.weapon['weapon_id']} missed target {self.weapon['target_id']} at {seconds_to_string(self.second)}."
+
+
+class ThreatMissMessage:
+    def __init__(self, threat_obs: dict, second: int):
+        self.threat_obs: dict = threat_obs
+        self.second = second
+
+    def to_dict(self):
+        return self.__dict__.copy()
+
+    def to_string(self):
+        return f"Threat {self.threat_obs['threat_id']} missed target ship {SHIP_NAMES[self.threat_obs['target_ship']]} at {seconds_to_string(self.second)}."
+
+
+def seconds_to_string(seconds: float) -> str:
+    mins: int = int(seconds / 60)
+    secs: int = int(round(seconds % 60))
+    return f"{mins}m {secs}s"

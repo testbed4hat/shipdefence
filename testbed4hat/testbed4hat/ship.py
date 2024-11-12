@@ -25,19 +25,23 @@ NO_INVENTORY = "NO INVENTORY"
 
 
 class Ship:
-    def __init__(self, location: Tuple[float, float],
-                 orientation: float,
-                 num_weapon_0: int,
-                 num_weapon_1: int,
-                 weapon_0_reload_time: int,
-                 weapon_1_reload_time: int,
-                 weapon_0_speed: float,
-                 weapon_1_speed: float,
-                 rng: np.random.RandomState,
-                 ):
+    def __init__(
+        self,
+        ship_id: int,
+        location: Tuple[float, float],
+        orientation: float,
+        num_weapon_0: int,
+        num_weapon_1: int,
+        weapon_0_reload_time: int,
+        weapon_1_reload_time: int,
+        weapon_0_speed: float,
+        weapon_1_speed: float,
+        rng: np.random.RandomState,
+    ):
         """
         A Ship object used in the HAT simulation environment. Has a location and orientation, holds a number of
         weapons, and can launch weapons.
+        :param ship_id: (int) The ID of this ship in the simulation.
         :param location: (float, float) The location of the ship in meters.
         :param orientation: (float) The orientation of the ship in degrees.
         :param num_weapon_0: (int) Starting inventory count of weapon 0.
@@ -48,6 +52,7 @@ class Ship:
         :param weapon_1_speed: (float) The speed at which weapon 1 travels in meters per second.
         :param rng: Numpy random number generator.
         """
+        self.ship_id = ship_id
         self.location = location
         self.orientation = orientation
         self.num_weapon_0 = num_weapon_0
@@ -75,7 +80,7 @@ class Ship:
             self.num_weapon_0 -= 1
             self.weapon_0_reloading = True
             self.weapon_0_reload_timer = self.weapon_0_reload_time
-            return Weapon(self.location, self.orientation, self.weapon_0_speed, threat, 0, weapon_id, self.rng)
+            return Weapon(self.ship_id, self.location, self.orientation, self.weapon_0_speed, threat, 0, weapon_id, self.rng)
 
     def use_weapon_1(self, threat: Threat, weapon_id: str):
         if self.weapon_1_reloading:
@@ -86,7 +91,7 @@ class Ship:
             self.num_weapon_1 -= 1
             self.weapon_1_reloading = True
             self.weapon_1_reload_timer = self.weapon_1_reload_time
-            return Weapon(self.location, self.orientation, self.weapon_1_speed, threat, 1, weapon_id, self.rng)
+            return Weapon(self.ship_id, self.location, self.orientation, self.weapon_1_speed, threat, 1, weapon_id, self.rng)
 
     def use_weapon(self, weapon_type: int, threat: Threat, weapon_id: str):
         if weapon_type == 0:
@@ -108,7 +113,7 @@ class Ship:
 
     def weapon_inventory(self):
         return {"weapon_0_inventory": self.num_weapon_0, "weapon_1_inventory": self.num_weapon_1}
-    
+
     def weapon_status(self):
         return {"weapon_0_reloading": self.weapon_0_reloading, "weapon_1_reloading": self.weapon_1_reloading}
 

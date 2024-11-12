@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import copy
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 
@@ -24,10 +24,20 @@ from .utils import distance, get_weapon_launch_info
 
 
 class Weapon:
-    def __init__(self, ship_location: Tuple[float, float], ship_orientation: float, weapon_speed: float,
-                 threat: Threat, weapon_type: int, weapon_id: str, rng: np.random.RandomState):
+    def __init__(
+        self,
+        ship_id: int,
+        ship_location: Tuple[float, float],
+        ship_orientation: float,
+        weapon_speed: float,
+        threat: Threat,
+        weapon_type: int,
+        weapon_id: str,
+        rng: np.random.RandomState,
+    ):
         """
         A weapon for neutralizing threats.
+        :param ship_id: (int) Ship of origin.
         :param ship_location: (float, float) Ship of origin location in meters.
         :param ship_orientation: Ship of origin orientation, in degrees. (Not currently used, as PK does not depend on
             orientation in this version of the HAT environment.)
@@ -40,18 +50,20 @@ class Weapon:
         # defensive weapon, launched against a threat
         assert weapon_type == 0 or weapon_type == 1  # only two weapon types right now
 
-        self.ship_location = np.array(ship_location)
+        self.ship_id = ship_id
+        self.ship_location = np.array(ship_location).astype(float)
         self.threat = threat
         self.weapon_type = weapon_type
         self.weapon_id = weapon_id
-        launch_info = get_weapon_launch_info(self.threat.location, self.ship_location, self.threat.velocity,
-                                             weapon_speed)
-        self.timer = launch_info['time_to_intercept']
-        self.velocity = launch_info['weapon_velocity']
-        self.intercept_point = launch_info['intercept_point']
+        launch_info = get_weapon_launch_info(
+            self.threat.location, self.ship_location, self.threat.velocity, weapon_speed
+        )
+        self.timer = launch_info["time_to_intercept"] if launch_info else 1
+        self.velocity = launch_info["weapon_velocity"] if launch_info else [0, 0]
+        self.intercept_point = launch_info["intercept_point"] if launch_info else ship_location
         self.location = copy.deepcopy(self.ship_location)
 
-        distance_to_threat = distance(ship_location, threat.location)
+        distance_to_threat = float(distance(ship_location, threat.location))
 
         # not currently using direction for pk, but could in the future
         # direction = self._compute_angle(self.ship_location, ship_orientation, threat.location)
@@ -83,6 +95,9 @@ class Weapon:
 
     def get_kill_success(self) -> bool:
         return self.kill
+
+    def get_ship_id(self) -> int:
+        return self.ship_id
 
     def get_weapon_id(self) -> str:
         return self.weapon_id

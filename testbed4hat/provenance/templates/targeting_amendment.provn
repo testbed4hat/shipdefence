@@ -1,0 +1,23 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    agent(var:role)
+    entity(var:wa_0)
+    entity(var:wa_1,
+      [ prov:type='serge:WeaponAssignment',
+        prov:type='var:wa_type',
+        serge:asset='var:asset',
+        serge:target='var:target',
+        serge:weapon='var:weapon'
+      ]
+    )
+    wasAttributedTo(var:wa_1, var:role)
+    wasDerivedFrom(var:wa_1, var:wa_0)
+
+  endBundle
+endDocument

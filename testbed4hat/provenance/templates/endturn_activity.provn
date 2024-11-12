@@ -1,0 +1,49 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:fserial)
+    entity(var:force0)
+    agent(var:role)
+    entity(var:aserial)
+    entity(var:asset0)
+    entity(var:plan)
+
+    activity(var:act, -, -,
+      [ prov:type='var:act_type',
+        tmpl:startTime='var:startTime',
+        tmpl:endTime='var:endTime'
+      ]
+    )
+    used(var:act, var:asset0, -)
+    used(var:act, var:plan, -)
+    wasAssociatedWith(var:act, var:role, -)
+
+    entity(var:asset1,
+      [ prov:type='serge:Asset',
+        prov:type='var:asset_type',
+        serge:name='var:name',  // asset name
+        serge:turn_number='var:turn_number',
+        serge:condition='var:condition',
+        serge:state='var:state',
+        serge:speed='var:speed',
+        serge:position='var:position'
+      ]
+    )
+    specializationOf(var:asset1, var:aserial)
+    wasDerivedFrom(var:asset1, var:asset0)
+    wasDerivedFrom(var:asset1, var:plan)
+
+    wasGeneratedBy(var:asset1, var:act, -)
+
+    entity(var:force1, [prov:type='serge:Force'])
+    hadMember(var:force1, var:asset1)
+    wasDerivedFrom(var:force1, var:force0)
+    specializationOf(var:force1, var:fserial)
+
+  endBundle
+endDocument

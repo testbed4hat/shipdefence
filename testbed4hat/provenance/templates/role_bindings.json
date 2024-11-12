@@ -1,0 +1,20 @@
+{
+  "var": {
+    "rserial": [{"@id": "role:*", "@input": "compulsory", "@output": "false"}],
+    "role": [{"@id": "role:*", "@input": "compulsory", "@output": "false"}],
+    "role_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "fserial": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force_name": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "name": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "msg": "http://example.org/serge-game/msg/",
+    "ch": "http://example.org/serge-game/ch/",
+    "force": "http://example.org/serge-game/force/",
+    "role": "http://example.org/serge-game/role/"
+  }
+}

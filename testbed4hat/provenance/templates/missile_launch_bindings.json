@@ -1,0 +1,23 @@
+{
+  "var": {
+    "ship": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "missile_0": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "missile_1": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "missile_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "position": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "velocity": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "optional", "@output": "false"}]
+    ],
+    "target": [{"@id": "asset:*", "@input": "optional", "@output": "false"}],
+    "wa": [{"@id": "msg:*", "@input": "compulsory", "@output": "false"}]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "msg": "http://example.org/serge-game/msg/",
+    "ch": "http://example.org/serge-game/ch/",
+    "force": "http://example.org/serge-game/force/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}

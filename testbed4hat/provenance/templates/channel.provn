@@ -1,0 +1,23 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:cserial,
+      [ prov:type='serge:Channel',
+        prov:type='var:channel_type',
+        serge:name='var:name'   // force name
+      ]
+    )
+
+    entity(var:channel,
+      [ prov:type='serge:Channel',
+        serge:name='var:name'   // force name
+      ]
+    )
+    specializationOf(var:channel, var:cserial)
+  endBundle
+endDocument

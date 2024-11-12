@@ -110,8 +110,8 @@ env2 = HatEnv(cfg)
 
 # Specify parameters directly after initialization -- Safe (checks that the parameter is valid in the config)
 cfg.seed = 42
-cfg.set_parameter("num_ship_1_weapon_0", 25)
-cfg.set_parameter("num_ship_2_weapon_0", 22)
+cfg.set_parameter("num_ship_0_weapon_0", 25)
+cfg.set_parameter("num_ship_1_weapon_0", 22)
 # cfg.set_parameter("non_existent_parameter", 1000)  # Raises exception because the parameter is not part of the config!
 
 # If we want to be careful, we can validate our updated parameters before passing the config to the environment (this is
@@ -123,8 +123,8 @@ env3 = HatEnv(cfg)
 # Specify parameters directly after initialization -- Dangerous (can set an invalid parameter and have no warning)
 cfg = HatEnvConfig()
 cfg.seed = 42
-cfg.num_ship_1_weapon_0 = 25
-cfg.num_ship_2_weapon_0 = 22
+cfg.num_ship_0_weapon_0 = 25
+cfg.num_ship_1_weapon_0 = 22
 cfg.non_existent_parameter = 22  # Will NOT affect the simulation and will NOT raise any errors or warnings!
 
 cfg.validate()  # Also will not catch the above error
@@ -155,7 +155,7 @@ fired from that ship.
 Observations from this environment consist of dictionaries of the form:
 
 ```
-{"ship_1": dict, "ship_2": dict, "launched": list, "failed": list, "messages": list}
+{"ship_0": dict, "ship_1": dict, "launched": list, "failed": list, "messages": list}
 ```
 
 Ship observations are also dictionaries containing information about each ship, its current weapon inventory, and 

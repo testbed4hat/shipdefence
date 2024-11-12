@@ -4,3 +4,9 @@ requires = [
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+
+# ==== black ====
+[tool.black]
+line-length = 119
+target-version = ['py312']

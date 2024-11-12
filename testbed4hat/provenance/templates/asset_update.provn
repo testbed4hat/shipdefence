@@ -1,0 +1,24 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    entity(var:asset_0)
+    entity(var:asset_1,
+      [ prov:type='serge:Asset',
+        prov:type='var:asset_type',
+        serge:name='var:name',   // asset name
+        serge:position='var:position',
+        serge:speed='var:speed',
+        serge:condition='var:condition',
+        serge:state='var:state',
+        serge:turn='var:turn'
+      ]
+    )
+    wasDerivedFrom(var:asset_1, var:asset_0)
+
+  endBundle
+endDocument

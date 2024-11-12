@@ -1,0 +1,29 @@
+document
+  prefix tmpl <http://openprovenance.org/tmpl#>
+  prefix var <http://openprovenance.org/var#>
+  prefix vargen <http://openprovenance.org/vargen#>
+
+  bundle vargen:b
+    prefix serge <http://openprovenance.org/ns/serge#>
+
+    agent(var:sender)
+    entity(var:message,
+      [ prov:type='serge:Message',
+        prov:type='var:message_type',
+        prov:value='var:message_content',
+        serge:channel='var:cserial'
+      ]
+    )
+    wasAttributedTo(var:message, var:sender)
+
+    entity(var:cserial)
+    entity(var:channel0)
+    entity(var:channel1, [prov:type='serge:Channel', prov:type='var:channel_type'])
+    specializationOf(var:channel1, var:cserial)
+    hadMember(var:channel1, var:message)
+    wasDerivedFrom(var:channel1, var:channel0)
+
+    wasAttributedTo(var:channel1, var:sender)
+
+  endBundle
+endDocument

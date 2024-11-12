@@ -1,0 +1,43 @@
+{
+  "var": {
+    "act": [{"@id": "act:*", "@input": "compulsory", "@output": "false"}],
+    "act_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "role": [{"@id": "role:*", "@input": "optional", "@output": "false"}],
+    "plan": [{"@id": "plan:*", "@input": "optional", "@output": "false"}],
+    "aserial": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset0": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset1": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "asset_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "fserial": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force0": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "force1": [{"@id": "force:*", "@input": "compulsory", "@output": "false"}],
+    "name": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "turn_number": [
+      [{"@value": "*","@type": "xsd:int", "@input": "compulsory", "@output": "false"}]
+    ],
+    "condition": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "state": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "speed": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "position": [
+      [{"@value": "*", "@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ],
+    "startTime": [
+      [{"@value": "*", "@type": "xsd:dateTime", "@input": "compulsory", "@output": "false"}]
+    ],
+    "endTime": [
+      [{"@value": "*", "@type": "xsd:dateTime", "@input": "compulsory", "@output": "false"}]
+    ]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "plan": "http://example.org/serge-game/plan/",
+    "act": "http://example.org/serge-game/act/",
+    "force": "http://example.org/serge-game/force/",
+    "role": "http://example.org/serge-game/role/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}

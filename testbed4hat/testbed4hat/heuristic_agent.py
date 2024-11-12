@@ -41,10 +41,10 @@ class HeuristicAgent:
         self.weapon_0_speed = weapon_0_speed
         self.weapon_1_speed = weapon_1_speed
         self.threshold = threshold
+        self.ship_0_key = "ship_0"
         self.ship_1_key = "ship_1"
-        self.ship_2_key = "ship_2"
-        self.ship_1_idx = 0
-        self.ship_2_idx = 1
+        self.ship_0_idx = 0
+        self.ship_1_idx = 1
 
         self.max_threat_dist = 70_000
         self.max_urgency_dist = 10_000
@@ -78,10 +78,13 @@ class HeuristicAgent:
         weapon_1_intercept_info = get_weapon_launch_info(threat_location, ship_location, threat_velocity,
                                                          self.weapon_1_speed)
 
-        intercept_point_weapon_0 = weapon_0_intercept_info["intercept_point"]
-        intercept_point_weapon_1 = weapon_1_intercept_info["intercept_point"]
-        dist_to_intercept_weapon_0 = distance(ship_location, intercept_point_weapon_0)
-        dist_to_intercept_weapon_1 = distance(ship_location, intercept_point_weapon_1)
+        # Weapons may not be able to intercept, resulting in <None>, so set dist=0, which gives 0 prob weight
+        intercept_point_weapon_0 = (ship_location if not weapon_0_intercept_info
+                                    else weapon_0_intercept_info["intercept_point"])
+        intercept_point_weapon_1 = (ship_location if not weapon_1_intercept_info
+                                    else weapon_1_intercept_info["intercept_point"])
+        dist_to_intercept_weapon_0 = float(distance(ship_location, intercept_point_weapon_0))
+        dist_to_intercept_weapon_1 = float(distance(ship_location, intercept_point_weapon_1))
 
         ship_weapon_0_pk = get_pk(dist_to_intercept_weapon_0, 0, ship_threat["threat_type"])
         ship_weapon_1_pk = get_pk(dist_to_intercept_weapon_1, 1, ship_threat["threat_type"])
@@ -103,20 +106,20 @@ class HeuristicAgent:
         :return: (list) List of actions to take at this step.
         """
 
+        ship_0_location = observation[self.ship_0_key]['location']
         ship_1_location = observation[self.ship_1_key]['location']
-        ship_2_location = observation[self.ship_2_key]['location']
 
+        ship_0_threat_obs = observation[self.ship_0_key]['threats']
         ship_1_threat_obs = observation[self.ship_1_key]['threats']
-        ship_2_threat_obs = observation[self.ship_2_key]['threats']
 
+        ship_0_threat_dict = dict([(t["threat_id"], t) for t in ship_0_threat_obs])
         ship_1_threat_dict = dict([(t["threat_id"], t) for t in ship_1_threat_obs])
-        ship_2_threat_dict = dict([(t["threat_id"], t) for t in ship_2_threat_obs])
-        my_threat_obs = (ship_1_threat_obs
-                         + [s for s in ship_2_threat_obs if s['threat_id'] not in ship_1_threat_dict.keys()])
+        my_threat_obs = (ship_0_threat_obs
+                         + [s for s in ship_1_threat_obs if s['threat_id'] not in ship_0_threat_dict.keys()])
+        ship_0_weapon_obs = observation[self.ship_0_key]['weapons']
         ship_1_weapon_obs = observation[self.ship_1_key]['weapons']
-        ship_2_weapon_obs = observation[self.ship_2_key]['weapons']
 
-        my_weapon_obs = ship_1_weapon_obs + ship_2_weapon_obs
+        my_weapon_obs = ship_0_weapon_obs + ship_1_weapon_obs
         targeted_threats = [w['target_id'] for w in my_weapon_obs]
 
         actions = []
@@ -124,16 +127,16 @@ class HeuristicAgent:
             if threat["threat_id"] in targeted_threats:
                 continue
             weapon_options = []
+            if threat["threat_id"] in ship_0_threat_dict:
+                ship_threat = ship_0_threat_dict[threat["threat_id"]]
+                weapon = self._get_ship_weapon_choice(ship_threat, ship_0_location, self.ship_0_idx,
+                                                      observation[self.ship_0_key]['inventory'])
+                if weapon is not None:
+                    weapon_options.append(weapon)
             if threat["threat_id"] in ship_1_threat_dict:
                 ship_threat = ship_1_threat_dict[threat["threat_id"]]
                 weapon = self._get_ship_weapon_choice(ship_threat, ship_1_location, self.ship_1_idx,
                                                       observation[self.ship_1_key]['inventory'])
-                if weapon is not None:
-                    weapon_options.append(weapon)
-            if threat["threat_id"] in ship_2_threat_dict:
-                ship_threat = ship_2_threat_dict[threat["threat_id"]]
-                weapon = self._get_ship_weapon_choice(ship_threat, ship_2_location, self.ship_2_idx,
-                                                      observation[self.ship_2_key]['inventory'])
                 if weapon is not None:
                     weapon_options.append(weapon)
             if len(weapon_options) == 0:

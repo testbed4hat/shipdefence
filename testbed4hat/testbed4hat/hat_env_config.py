@@ -16,13 +16,14 @@
 import json
 from typing import Union, Any
 
-from testbed4hat.wave_generator import WaveGenerator, DEFAULT_THREAT_0_SPEED, DEFAULT_THREAT_1_SPEED
+from .wave_generator import WaveGenerator, DEFAULT_THREAT_0_SPEED, DEFAULT_THREAT_1_SPEED
 
 
 class HatEnvConfig:
     """Configurate object of HAT environment"""
     SECONDS_PER_TIMESTEP_RANGE = (1, 60 * 60)
     WASTED_REWARD_RANGE = (-1, 0)
+    TARGET_HIT_REWARD_RANGE = (0, 5)
     ZOOM_RANGE = (0.5, 5)
     SCREEN_SIZE_RANGE = (400, 2000)
     THREAT_BASE_SIZE_RANGE = (150, 300)
@@ -30,6 +31,8 @@ class HatEnvConfig:
     SHIP_BASE_SIZE_RANGE = (200, 800)
     COLOR_RANGE = (0, 255)
     MAX_TIME_RANGE = (5 * 60, 60 * 60)
+    HARD_SHIP_LOCATION_RANGE = (-1000, 1000)  # in meters
+    FONT_SIZE_RANGE = (12, 32)
 
     PARAM_DESCRIPTION = {
         "config": "Dictionary with HAT environment configuration parameters as key-value pairs, or string path to a "
@@ -44,15 +47,18 @@ class HatEnvConfig:
         "weapon_1_reload_time":
             "Number of seconds for weapon 1 to reload. The weapon cannot be launched during the "
             "reload period.",
-        "num_ship_1_weapon_0": "Total number of weapon 0 on ship 1.",
-        "num_ship_1_weapon_1": "Total number of weapon 1 on ship 1.",
-        "num_ship_2_weapon_0": "Total number of weapon 0 on ship 2.",
-        "num_ship_2_weapon_1": "Total number of weapon 1 on ship 2.",
+        "num_ship_0_weapon_0": "Total number of weapon 0 on ship 1.",
+        "num_ship_0_weapon_1": "Total number of weapon 1 on ship 1.",
+        "num_ship_1_weapon_0": "Total number of weapon 0 on ship 2.",
+        "num_ship_1_weapon_1": "Total number of weapon 1 on ship 2.",
         "min_distance_between_ships": "The minimum distance between the two ship locations.",
         "max_distance_between_ships": "The maximum distance between the two ship locations.",
+        "hard_ship_0_location": "Force ship 1 to be located a this point (instead of random generation)",
+        "hard_ship_1_location": "Force ship 2 to be located a this point (instead of random generation)",
         "wasted_weapon_reward": "The reward returned by the environment for each wasted weapon. A "
                                 "weapon is considered 'wasted' if the threat it targeted was "
                                 "destroyed before the weapon hit it",
+        "target_hit_reward": "The reward returned by the environment for eliminating a threat with a weapon.",
         "max_episode_time_in_seconds": "The total time represented in the simulation (not real-time).",
         "verbose": "Print optional information about the environment, including warnings.",
         "render_env": "Whether to render the environment using PyGame or not.",
@@ -71,8 +77,11 @@ class HatEnvConfig:
         "weapon_1_color": "Weapon 1 color.",
         "ship_base_length": "The base width of the ship in meters.",
         "ship_base_width": "The base height of the ship in meters.",
-        "ship_1_color": "Ship 1 color.",
-        "ship_2_color": "Ship 2 color.",
+        "ship_0_color": "Ship 1 color.",
+        "ship_1_color": "Ship 2 color.",
+        "font_size": "The font size in for threat visualization.",
+        "font_color": "The color of the font for threat visualization.",
+        "display_threat_ids": "Whether to display threat IDs when rendering or not.",
         "threat_0_kill_radius": "Radius around ships where threat 0 is effective.",
         "threat_1_kill_radius": "Radius around ships where threat 1 is effective.",
         "threat_0_speed": "Speed of threat 0.",
@@ -92,14 +101,17 @@ class HatEnvConfig:
         "weapon_1_speed": float,
         "weapon_0_reload_time": int,
         "weapon_1_reload_time": int,
+        "num_ship_0_weapon_0": int,
+        "num_ship_0_weapon_1": int,
         "num_ship_1_weapon_0": int,
         "num_ship_1_weapon_1": int,
-        "num_ship_2_weapon_0": int,
-        "num_ship_2_weapon_1": int,
         "min_distance_between_ships": (int, float),
         "max_distance_between_ships": (int, float),
         "wasted_weapon_reward": float,
+        "target_hit_reward": float,
         "max_episode_time_in_seconds": int,
+        "hard_ship_0_location": (None, tuple, list),
+        "hard_ship_1_location": (None, tuple, list),
         "verbose": bool,
         "render_env": bool,
         "zoom": float,
@@ -116,8 +128,11 @@ class HatEnvConfig:
         "weapon_1_color": tuple,
         "ship_base_length": int,
         "ship_base_width": int,
+        "ship_0_color": tuple,
         "ship_1_color": tuple,
-        "ship_2_color": tuple,
+        "font_size": int,
+        "font_color": tuple,
+        "display_threat_ids": bool,
         "threat_0_kill_radius": (float, int),
         "threat_1_kill_radius": (float, int),
         "threat_0_speed": (float, int),
@@ -138,13 +153,16 @@ class HatEnvConfig:
         self.weapon_1_speed = 9.0 * 1_000 / 60  # 9.0 km/min -> m/s
         self.weapon_0_reload_time = 15
         self.weapon_1_reload_time = 10
+        self.num_ship_0_weapon_0 = 10
+        self.num_ship_0_weapon_1 = 10
         self.num_ship_1_weapon_0 = 10
         self.num_ship_1_weapon_1 = 10
-        self.num_ship_2_weapon_0 = 10
-        self.num_ship_2_weapon_1 = 10
         self.min_distance_between_ships = 1000  # in meters
         self.max_distance_between_ships = 5000  # in meters
+        self.hard_ship_0_location = None
+        self.hard_ship_1_location = None
         self.wasted_weapon_reward = -0.01
+        self.target_hit_reward = 2.0
         self.max_episode_time_in_seconds = 25 * 60
         self.verbose = True
 
@@ -166,8 +184,12 @@ class HatEnvConfig:
 
         self.ship_base_length = 600
         self.ship_base_width = 200
-        self.ship_1_color = (0, 255, 0)  # green
-        self.ship_2_color = (0, 0, 255)  # blue
+        self.ship_0_color = (0, 255, 0)  # green
+        self.ship_1_color = (0, 0, 255)  # blue
+
+        self.font_size = 18
+        self.font_color = (0, 0, 0)  # black
+        self.display_threat_ids = True
 
         # generator parameters
         self.threat_0_kill_radius = 1000
@@ -218,6 +240,7 @@ class HatEnvConfig:
         """Print a text description of this object"""
         PARAMS_WITH_RANGES = {"seconds_per_timestep": self.SECONDS_PER_TIMESTEP_RANGE,
                               "wasted_weapon_reward": self.WASTED_REWARD_RANGE,
+                              "target_hit_reward": self.TARGET_HIT_REWARD_RANGE,
                               "zoom": self.ZOOM_RANGE,
                               "screen_width": self.SCREEN_SIZE_RANGE,
                               "screen_height": self.SCREEN_SIZE_RANGE,
@@ -225,7 +248,10 @@ class HatEnvConfig:
                               "threat_1_base_size": self.THREAT_BASE_SIZE_RANGE,
                               "weapon_0_base_size": self.WEAPON_BASE_SIZE_RANGE,
                               "weapon_1_base_size": self.WEAPON_BASE_SIZE_RANGE,
-                              "max_episode_time_in_seconds": self.MAX_TIME_RANGE
+                              "max_episode_time_in_seconds": self.MAX_TIME_RANGE,
+                              "hard_ship_0_location": self.HARD_SHIP_LOCATION_RANGE,
+                              "hard_ship_1_location": self.HARD_SHIP_LOCATION_RANGE,
+                              "font_size": self.FONT_SIZE_RANGE,
                               }
         print("The configuration object for the HatEnv environment. The configuration parameters are as follows:")
         print()
@@ -259,14 +285,24 @@ class HatEnvConfig:
         assert isinstance(self.weapon_1_speed, float) and 0 < self.weapon_1_speed
         assert isinstance(self.weapon_0_reload_time, int) and 0 <= self.weapon_0_reload_time
         assert isinstance(self.weapon_1_reload_time, int) and 0 <= self.weapon_1_reload_time
+        assert isinstance(self.num_ship_0_weapon_0, int) and 0 <= self.num_ship_0_weapon_0
+        assert isinstance(self.num_ship_0_weapon_1, int) and 0 <= self.num_ship_0_weapon_1
         assert isinstance(self.num_ship_1_weapon_0, int) and 0 <= self.num_ship_1_weapon_0
         assert isinstance(self.num_ship_1_weapon_1, int) and 0 <= self.num_ship_1_weapon_1
-        assert isinstance(self.num_ship_2_weapon_0, int) and 0 <= self.num_ship_2_weapon_0
-        assert isinstance(self.num_ship_2_weapon_1, int) and 0 <= self.num_ship_2_weapon_1
         assert isinstance(self.min_distance_between_ships, (int, float)) and 0 < self.min_distance_between_ships
         assert isinstance(self.max_distance_between_ships, (int, float)) and 0 < self.max_distance_between_ships
+        assert self.hard_ship_0_location is None or isinstance(self.hard_ship_0_location, (tuple, list))
+        if self.hard_ship_0_location is not None:
+            for coord in self.hard_ship_0_location:
+                assert self.HARD_SHIP_LOCATION_RANGE[0] <= coord <= self.HARD_SHIP_LOCATION_RANGE[1]
+        assert self.hard_ship_1_location is None or isinstance(self.hard_ship_1_location, (tuple, list))
+        if self.hard_ship_1_location is not None:
+            for coord in self.hard_ship_1_location:
+                assert self.HARD_SHIP_LOCATION_RANGE[0] <= coord <= self.HARD_SHIP_LOCATION_RANGE[1]
         assert isinstance(self.wasted_weapon_reward, float)
         assert self.WASTED_REWARD_RANGE[0] <= self.wasted_weapon_reward <= self.WASTED_REWARD_RANGE[1]
+        assert isinstance(self.target_hit_reward, float)
+        assert self.TARGET_HIT_REWARD_RANGE[0] <= self.target_hit_reward <= self.TARGET_HIT_REWARD_RANGE[1]
         assert isinstance(self.max_episode_time_in_seconds, int)
         assert self.MAX_TIME_RANGE[0] <= self.max_episode_time_in_seconds <= self.MAX_TIME_RANGE[1]
         assert isinstance(self.verbose, bool)
@@ -299,8 +335,12 @@ class HatEnvConfig:
         assert self.SHIP_BASE_SIZE_RANGE[0] <= self.ship_base_width <= self.SHIP_BASE_SIZE_RANGE[1]
         assert self.SHIP_BASE_SIZE_RANGE[0] <= self.ship_base_length <= self.SHIP_BASE_SIZE_RANGE[1]
         assert self.ship_base_width <= self.ship_base_length - 200  # keep reasonable proportions
+        self._validate_color(self.ship_0_color)
         self._validate_color(self.ship_1_color)
-        self._validate_color(self.ship_2_color)
+
+        assert self.FONT_SIZE_RANGE[0] <= self.font_size <= self.FONT_SIZE_RANGE[1]
+        self._validate_color(self.font_color)
+        assert isinstance(self.display_threat_ids, bool)
 
         # generator parameters
         assert isinstance(self.threat_0_kill_radius, (float, int)) and 0 < self.threat_0_kill_radius

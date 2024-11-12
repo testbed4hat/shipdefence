@@ -1,0 +1,19 @@
+{
+  "var": {
+    "sender": [{"@id": "role:*", "@input": "compulsory", "@output": "false"}],
+    "wa": [{"@id": "msg:*", "@input": "compulsory", "@output": "false"}],
+    "wa_type": [{"@id": "serge:*", "@input": "compulsory", "@output": "false"}],
+    "asset": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "target": [{"@id": "asset:*", "@input": "compulsory", "@output": "false"}],
+    "weapon": [
+      [{"@value": "*","@type": "xsd:string", "@input": "compulsory", "@output": "false"}]
+    ]
+  },
+  "context": {
+    "serge": "http://openprovenance.org/ns/serge#",
+    "msg": "http://example.org/serge-game/msg/",
+    "ch": "http://example.org/serge-game/ch/",
+    "role": "http://example.org/serge-game/role/",
+    "asset": "http://example.org/serge-game/asset/"
+  }
+}
