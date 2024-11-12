@@ -174,7 +174,7 @@ actions, wasted munitions, and what ship was destroyed (if one is destroyed).
 The following graph shows how the probability of a successful interception varies with range, threat type, and interceptor type. Note that the range refers to the range at which the inteceptor reaches the threat, which can be calculated based on the threat speed and interceptor speed (but also is provided by the simulation status updates).
 ![pk_table](https://github.com/user-attachments/assets/b0b547f2-cf7a-4901-a9f4-326efba19849)
 
-Threat 0 has a velocity of 7.5 km/min and threat 1 has a velocity of 9 km/min. 
+Threat 1 has a velocity of 7.5 km/min and threat 2 has a velocity of 9 km/min. 
 
 ## License
 
